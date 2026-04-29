@@ -13,40 +13,52 @@ body {
 }
 
 /* キャラクター案内 */
+/* キャラクター案内（縦並び） */
 #guide {
   display: flex;
+  flex-direction: column;   /* ← 縦並びにする */
+  align-items: center;
   padding: 12px;
   background: #fff;
   border-bottom: 1px solid #ddd;
 }
-#guide img {
-  width: 80px;
-  height: 80px;
+
+/* キャラクター画像のサイズ（自由に変更可能） */
+#character {
+  width: 120px;   /* ← 好きなサイズに変更可能 */
+  height: auto;
+  margin-top: 10px;
 }
+
+/* 吹き出し */
 #bubble {
-  margin-left: 10px;
   background: #fff;
   padding: 10px;
   border-radius: 10px;
   border: 2px solid #333;
   position: relative;
+  max-width: 90%;
+  text-align: center;
 }
 #bubble:before {
   content: "";
   position: absolute;
-  left: -10px;
-  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -20px;
   border: 10px solid transparent;
-  border-right: 10px solid #333;
+  border-top: 10px solid #333;
 }
 #bubble:after {
   content: "";
   position: absolute;
-  left: -7px;
-  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -17px;
   border: 7px solid transparent;
-  border-right: 7px solid #fff;
+  border-top: 7px solid #fff;
 }
+
 
 /* 入力フォーム */
 #controls {
@@ -89,8 +101,8 @@ label {
 
 <!-- キャラクター案内 -->
 <div id="guide">
-  <img src="character.png">
   <div id="bubble">出発時刻と方向を選んでね。最速のバスを案内するよ。</div>
+  <img id="character" src="character.png">
 </div>
 
 <!-- 入力フォーム -->
@@ -98,6 +110,9 @@ label {
   <label>出発日時:
     <input type="datetime-local" id="datetime">
   </label>
+  <button id="nowButton" style="margin-top:10px;padding:10px 20px;">
+    現在時刻に更新
+  </button>
 
   <div id="modeButtons">
     <button data-mode="自宅→清瀬駅" class="active">自宅→清瀬駅</button>
@@ -109,9 +124,30 @@ label {
   <button onclick="searchBus()" style="margin-top:10px;padding:10px 20px;">検索</button>
 </div>
 
+<div id="dayTypeDisplay" style="padding:12px; font-size:16px; color:#333;"></div>
 <div id="results"></div>
 
 <script>
+// ----------------------------
+// Google 日本の祝日 API
+// ----------------------------
+const HOLIDAY_API =
+  "https://www.googleapis.com/calendar/v3/calendars/japanese__ja@holiday.calendar.google.com/events?key=AIzaSyCCQB3KoCaFIvG1Wf8xy7y03d1ACHjqpsU";
+
+let holidayList = [];
+
+async function loadHolidays() {
+  const res = await fetch(HOLIDAY_API);
+  const data = await res.json();
+
+  // 祝日の日付だけを配列にする
+  holidayList = data.items
+    .filter(ev => ev.start && ev.start.date)
+    .map(ev => ev.start.date);
+
+  console.log("Google祝日:", holidayList);
+}
+
 // ----------------------------
 // CSV 読み込み
 // ----------------------------
@@ -121,14 +157,17 @@ let schedules = [];
 async function loadCSV() {
   routes = await fetch("routes.csv").then(r => r.text()).then(parseCSV);
   schedules = await fetch("schedules.csv").then(r => r.text()).then(parseCSV);
+
+  console.log("routes:", routes);
+  console.log("schedules:", schedules);
 }
 
-// CSV → 配列
+// CSV → 配列（trim 対応）
 function parseCSV(text) {
   const lines = text.trim().split("\n");
-  const header = lines[0].split(",");
+  const header = lines[0].split(",").map(h => h.trim());
   return lines.slice(1).map(line => {
-    const cols = line.split(",");
+    const cols = line.split(",").map(c => c.trim());
     const obj = {};
     header.forEach((h,i)=> obj[h] = cols[i]);
     return obj;
@@ -136,17 +175,26 @@ function parseCSV(text) {
 }
 
 // ----------------------------
-// 日付から曜日を判定
+// 祝日判定
 // ----------------------------
+function isHoliday(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  const key = `${y}-${m}-${d}`;
+  return holidayList.includes(key);
+}
+
 function getDayType(date) {
-  const w = date.getDay();
-  if (w === 0) return "休日";
-  if (w === 6) return "土曜";
+  const day = date.getDay(); // 0=日曜, 6=土曜
+  if (isHoliday(date)) return "休日";
+  if (day === 0) return "休日";
+  if (day === 6) return "土曜";
   return "平日";
 }
 
 // ----------------------------
-// 時刻比較用
+// 時刻比較
 // ----------------------------
 function toMinutes(t) {
   const [h,m] = t.split(":").map(Number);
@@ -157,14 +205,61 @@ function minutesToTime(m) {
   const mm = String(m%60).padStart(2,"0");
   return `${h}:${mm}`;
 }
+function setDatetimeNow() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+
+  document.getElementById("datetime").value = `${y}-${m}-${d}T${hh}:${mm}`;
+}
+
+function getJSTDatetime() {
+  const val = document.getElementById("datetime").value; // "2026-04-29T18:00"
+  if (!val) return new Date();
+
+  const [datePart, timePart] = val.split("T");
+  const [y, m, d] = datePart.split("-").map(Number);
+  const [hh, mm] = timePart.split(":").map(Number);
+
+  // ★ ここが重要：new Date(y, m-1, d, hh, mm) はローカル(JST)で生成される
+  return new Date(y, m - 1, d, hh, mm);
+}
+
+
+// 初期値：現在時刻
+setDatetimeNow();
+
+// 現在時刻に更新ボタン
+document.getElementById("nowButton").onclick = () => {
+  setDatetimeNow();
+};
+
+//表情差分
+function setCharacterExpression(type) {
+  const img = document.getElementById("character");
+  if (type === "hurry") img.src = "character_hurry.png";
+  else if (type === "relax") img.src = "character_relax.png";
+  else img.src = "character_normal.png";
+}
+
 
 // ----------------------------
 // メイン処理
 // ----------------------------
 function searchBus() {
-  const dt = new Date(document.getElementById("datetime").value);
+  const dt = getJSTDatetime();   // ★ JSTで取得
   const mode = document.querySelector("#modeButtons .active").dataset.mode;
   const dayType = getDayType(dt);
+  const isFromHome = mode.startsWith("自宅→");   // 行き
+  const isToHome   = mode.endsWith("→自宅");     // 帰り
+
+
+  document.getElementById("dayTypeDisplay").innerText =
+    `この日は「${dayType}」ダイヤです`;
+
   const startMin = dt.getHours()*60 + dt.getMinutes();
 
   const candidates = [];
@@ -175,6 +270,7 @@ function searchBus() {
     const list = schedules.filter(s =>
       s.route === r.line &&
       s.stop === r.stop &&
+      s.direction === r.direction &&
       s.day_type === dayType &&
       toMinutes(s.depart_time) >= walkArrive
     );
@@ -200,20 +296,114 @@ function searchBus() {
   const results = document.getElementById("results");
   results.innerHTML = "";
 
-  candidates.forEach((c,i)=>{
-    results.innerHTML += `
-      <div class="result">
-        <h3>${i===0 ? "【最速】" : ""}${c.line}（${c.stop}）</h3>
-        出発 ${c.depart} → 到着 ${c.arrive}<br>
-        徒歩 ${c.walk}分 + 乗車 ${c.ride}分
-      </div>
-    `;
-  });
+candidates.forEach((c,i)=>{
+  const isFromHome = mode.startsWith("自宅→");   // 行き
+  const isToHome   = mode.endsWith("→自宅");     // 帰り
+
+  let detailText = "";
+
+  if (isFromHome) {
+    // 自宅 → 駅（行き）
+    const dt = getJSTDatetime();
+    const leaveHomeTime = minutesToTime(startMin);  // 家を出る時刻
+    const busDepartTime = c.depart;                 // バス発車時刻
+
+    detailText =
+      `家を出る時刻：${leaveHomeTime}<br>` +
+      `バス発車時刻：${busDepartTime}<br>` +
+      `徒歩 ${c.walk}分 + 乗車 ${c.ride}分`;
+  }
+
+  if (isToHome) {
+    // 駅 → 自宅（帰り）
+    detailText = `乗車 ${c.ride}分 + 徒歩 ${c.walk}分`;
+  }
+
+  results.innerHTML += `
+    <div class="result">
+      <h3>${i===0 ? "【最速】" : ""}${c.line}（${c.stop}）</h3>
+      出発 <b>${c.depart}</b> → 到着 <b>${c.arrive}</b><br>
+      ${detailText}
+    </div>
+`;
+
+});
+
+
+// ★ 吹き出しに要約を表示（方向別 + セリフ変化 + 表情 + 徒歩コメント）
+if (candidates.length > 0) {
+  const best = candidates[0];
+
+  const isFromHome = mode.startsWith("自宅→");   // 行き
+  const isToHome   = mode.endsWith("→自宅");     // 帰り
+
+  const baseMin = startMin;  // 設定した時刻
+  const departMin = toMinutes(best.depart);
+  const diff = departMin - baseMin;
+
+  let message = "";
+  let expression = "normal";
+  let walkComment = "";
+
+  // 徒歩が長い場合の追加コメント
+  if (Number(best.walk) >= 10) {
+    walkComment = " <br>歩く時間が少し長いから気をつけてね。";
+  }
+
+  if (isFromHome) {
+    // 家を出るまでの残り時間
+    const leaveDiff = diff - Number(best.walk);
+
+    // 行きのセリフ分岐
+    if (leaveDiff <= 10) {
+      message =
+        `あと<b>${leaveDiff}分</b>で家を出て、<b>${diff}分後</b>に「<b>${best.stop}</b>」から出る<b>${best.line}</b>系統に乗ってね。`+
+        `<br>急げば間に合うよ！` ;
+      expression = "hurry";
+    } else if (leaveDiff <= 20) {
+      message =
+        `<b>${leaveDiff}分後</b>に家を出れば、<b>${diff}分後</b>に「<b>${best.stop}</b>」から出る<b>${best.line}</b>系統のバスに余裕で間に合うよ。`+
+        `<br>ちょうどいいタイミングだよ。` ;
+      expression = "normal";
+    } else {
+      message =
+        `<b>${leaveDiff}分後</b>に家を出れば、<b>${diff}分後</b>に「<b>${best.stop}</b>」から出る<b>${best.line}</b>系統のバスに間に合うよ。`+
+        `<br>のんびり準備して大丈夫だよ。` ;
+      expression = "relax";
+    }
+
+    document.getElementById("bubble").innerHTML = message + walkComment;
+    setCharacterExpression(expression);
+  }
+
+  if (isToHome) {
+    // 帰りのセリフ分岐
+    if (diff <= 10) {
+      message =
+        `<b>${diff}分後</b>に「<b>${best.stop}</b>」から出る<b>${best.line}</b>系統に乗れば、早く家に帰れるよ。`+
+        `<br>ちょうどいいタイミングだよ！` ;
+      expression = "normal";
+    } else {
+      message =
+        `<b>${diff}分後</b>に「<b>${best.stop}</b>」から出る<b>${best.line}</b>系統が一番早いよ。`+
+        `<br>ちょっと待ち時間が長いね…` ;
+      expression = "relax";
+    }
+
+    document.getElementById("bubble").innerHTML = message + walkComment;
+    setCharacterExpression(expression);
+  }
+
+} else {
+  document.getElementById("bubble").innerText =
+    `ごめんね、この時間帯はバスが見つからなかったよ。`;
+  setCharacterExpression("normal");
 }
 
-// 初期値：現在時刻
-document.getElementById("datetime").value =
-  new Date().toISOString().slice(0,16);
+
+
+
+}
 
 // 方向ボタン
 document.querySelectorAll("#modeButtons button").forEach(btn=>{
@@ -225,6 +415,8 @@ document.querySelectorAll("#modeButtons button").forEach(btn=>{
 
 // ページ読み込み時に CSV を読み込む
 loadCSV();
+loadHolidays();
+
 </script>
 
 </body>
