@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>簡易乗換案内</title>
+
+<style>
+body {
+  font-family: sans-serif;
+  margin: 0;
+  background: #f5f5f5;
+}
+
+/* キャラクター案内 */
+#guide {
+  display: flex;
+  padding: 12px;
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+}
+#guide img {
+  width: 80px;
+  height: 80px;
+}
+#bubble {
+  margin-left: 10px;
+  background: #fff;
+  padding: 10px;
+  border-radius: 10px;
+  border: 2px solid #333;
+  position: relative;
+}
+#bubble:before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 20px;
+  border: 10px solid transparent;
+  border-right: 10px solid #333;
+}
+#bubble:after {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 20px;
+  border: 7px solid transparent;
+  border-right: 7px solid #fff;
+}
+
+/* 入力フォーム */
+#controls {
+  padding: 12px;
+  background: #fff;
+}
+label {
+  display: block;
+  margin-top: 10px;
+}
+
+/* 方向切替 */
+#modeButtons button {
+  margin: 5px 3px;
+  padding: 8px 12px;
+  border: none;
+  background: #ddd;
+  border-radius: 6px;
+}
+#modeButtons button.active {
+  background: #4caf50;
+  color: #fff;
+}
+
+/* 結果カード */
+.result {
+  background: #fff;
+  margin: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 6px solid #4caf50;
+}
+.result h3 {
+  margin: 0;
+}
+</style>
+</head>
+
+<body>
+
+<!-- キャラクター案内 -->
+<div id="guide">
+  <img src="character.png">
+  <div id="bubble">出発時刻と方向を選んでね。最速のバスを案内するよ。</div>
+</div>
+
+<!-- 入力フォーム -->
+<div id="controls">
+  <label>出発日時:
+    <input type="datetime-local" id="datetime">
+  </label>
+
+  <div id="modeButtons">
+    <button data-mode="自宅→清瀬駅" class="active">自宅→清瀬駅</button>
+    <button data-mode="自宅→新座駅">自宅→新座駅</button>
+    <button data-mode="清瀬駅→自宅">清瀬駅→自宅</button>
+    <button data-mode="新座駅→自宅">新座駅→自宅</button>
+  </div>
+
+  <button onclick="searchBus()" style="margin-top:10px;padding:10px 20px;">検索</button>
+</div>
+
+<div id="results"></div>
+
+<script>
+// ----------------------------
+// CSV 読み込み
+// ----------------------------
+let routes = [];
+let schedules = [];
+
+async function loadCSV() {
+  routes = await fetch("routes.csv").then(r => r.text()).then(parseCSV);
+  schedules = await fetch("schedules.csv").then(r => r.text()).then(parseCSV);
+}
+
+// CSV → 配列
+function parseCSV(text) {
+  const lines = text.trim().split("\n");
+  const header = lines[0].split(",");
+  return lines.slice(1).map(line => {
+    const cols = line.split(",");
+    const obj = {};
+    header.forEach((h,i)=> obj[h] = cols[i]);
+    return obj;
+  });
+}
+
+// ----------------------------
+// 日付から曜日を判定
+// ----------------------------
+function getDayType(date) {
+  const w = date.getDay();
+  if (w === 0) return "休日";
+  if (w === 6) return "土曜";
+  return "平日";
+}
+
+// ----------------------------
+// 時刻比較用
+// ----------------------------
+function toMinutes(t) {
+  const [h,m] = t.split(":").map(Number);
+  return h*60 + m;
+}
+function minutesToTime(m) {
+  const h = String(Math.floor(m/60)).padStart(2,"0");
+  const mm = String(m%60).padStart(2,"0");
+  return `${h}:${mm}`;
+}
+
+// ----------------------------
+// メイン処理
+// ----------------------------
+function searchBus() {
+  const dt = new Date(document.getElementById("datetime").value);
+  const mode = document.querySelector("#modeButtons .active").dataset.mode;
+  const dayType = getDayType(dt);
+  const startMin = dt.getHours()*60 + dt.getMinutes();
+
+  const candidates = [];
+
+  routes.filter(r => r.mode === mode).forEach(r => {
+    const walkArrive = startMin + Number(r.walk_min);
+
+    const list = schedules.filter(s =>
+      s.route === r.line &&
+      s.stop === r.stop &&
+      s.day_type === dayType &&
+      toMinutes(s.depart_time) >= walkArrive
+    );
+
+    if (list.length === 0) return;
+
+    const nextBus = list[0];
+    const busDepart = toMinutes(nextBus.depart_time);
+    const arrive = busDepart + Number(r.ride_min);
+
+    candidates.push({
+      line: r.line,
+      stop: r.stop,
+      depart: nextBus.depart_time,
+      arrive: minutesToTime(arrive),
+      walk: r.walk_min,
+      ride: r.ride_min
+    });
+  });
+
+  candidates.sort((a,b)=> toMinutes(a.arrive)-toMinutes(b.arrive));
+
+  const results = document.getElementById("results");
+  results.innerHTML = "";
+
+  candidates.forEach((c,i)=>{
+    results.innerHTML += `
+      <div class="result">
+        <h3>${i===0 ? "【最速】" : ""}${c.line}（${c.stop}）</h3>
+        出発 ${c.depart} → 到着 ${c.arrive}<br>
+        徒歩 ${c.walk}分 + 乗車 ${c.ride}分
+      </div>
+    `;
+  });
+}
+
+// 初期値：現在時刻
+document.getElementById("datetime").value =
+  new Date().toISOString().slice(0,16);
+
+// 方向ボタン
+document.querySelectorAll("#modeButtons button").forEach(btn=>{
+  btn.onclick = ()=>{
+    document.querySelectorAll("#modeButtons button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+  };
+});
+
+// ページ読み込み時に CSV を読み込む
+loadCSV();
+</script>
+
+</body>
+</html>
