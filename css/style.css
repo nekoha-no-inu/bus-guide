@@ -1,0 +1,188 @@
+/* ====== 全体 ====== */
+body {
+  font-family: "Yu Gothic", sans-serif;
+  margin: 0;
+  padding: 20px;
+  background: #f7f7f7;
+}
+
+h2 {
+  margin-bottom: 10px;
+}
+
+/* ====== ホームボタン・メニューボタン ====== */
+.menu-btn {
+  display: inline-block;
+  padding: 10px 15px;
+  background: white;
+  border-radius: 10px;
+  border: 2px solid #333;
+  text-decoration: none;
+  color: #333;
+  margin-bottom: 20px;
+}
+.menu-btn:hover {
+  background: #f0f0f0;
+}
+
+/* ====== キャラ案内（共通） ====== */
+#guide {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+#leftBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+#bubble {
+  max-width: 260px;
+  padding: 12px;
+  background: #fef4d6;
+  border-radius: 10px;
+  border: 2px solid #333;
+  line-height: 1.6;
+}
+
+#character {
+  width: 120px;
+  height: auto;
+}
+
+/* ====== ルートカード（transfer.html 用） ====== */
+#routeCard {
+  background: #fff;
+  border: 2px solid #333;
+  border-radius: 10px;
+  padding: 12px;
+  width: 200px;
+  line-height: 1.6;
+  display: none;
+}
+
+/* ====== 入力フォーム（共通） ====== */
+select, button, input[type="date"], input[type="time"] {
+  padding: 10px;
+  font-size: 16px;
+  margin: 5px 0;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+
+/* ====== 時刻表カード（timetable.html 用） ====== */
+.time-card {
+  background: white;
+  border: 2px solid #333;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 15px;
+}
+
+.time-card h3 {
+  margin: 0 0 10px 0;
+}
+
+.time-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.time-item {
+  background: #fef4d6;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  font-size: 14px;
+}
+
+/* ====== transfer.html 専用レイアウト ====== */
+
+/* キャラクター案内（横並び） */
+#guide {
+  display: flex;
+  flex-direction: row;   /* 横並び */
+  align-items: flex-start;
+  gap: 20px;
+  margin-top: 10px;
+}
+
+/* 左側の吹き出し＋キャラを縦並びに */
+#leftBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* キャラと吹き出しを中央揃え */
+  gap: 10px;
+}
+
+/* 吹き出し */
+#bubble {
+  max-width: 260px;
+  padding: 10px;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 2px solid #333;
+}
+
+/* キャラ画像 */
+#character {
+  width: 120px;
+  height: auto;
+}
+
+/* ルートカード */
+#routeCard {
+  background: #fff;
+  border: 2px solid #333;
+  border-radius: 10px;
+  padding: 12px;
+  width: 200px;
+  line-height: 1.6;
+  display: none;
+}
+
+/* 入力フォーム */
+#controls {
+  padding: 12px;
+  background: #fff;
+}
+
+label {
+  display: block;
+  margin-top: 10px;
+}
+
+/* 方向切替 */
+#modeButtons button {
+  margin: 5px 3px;
+  padding: 8px 12px;
+  border: none;
+  background: #ddd;
+  border-radius: 6px;
+}
+
+#modeButtons button.active {
+  background: #4caf50;
+  color: #fff;
+}
+
+/* 結果カード */
+.result {
+  background: #fff;
+  margin: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 6px solid #4caf50;
+}
+
+.result h3 {
+  margin: 0;
+}
+

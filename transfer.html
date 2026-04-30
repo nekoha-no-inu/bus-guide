@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>バス乗換案内</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+<a href="home.html" class="menu-btn">← ホームに戻る</a>
+<!-- キャラクター案内 -->
+<div id="guide">
+
+  <!-- 左側：吹き出し＋キャラを縦に並べる -->
+  <div id="leftBlock">
+    <div id="bubble"></div>
+    <img id="character" src="img/character_normal.png">
+  </div>
+
+  <!-- 右側：ルートカード -->
+  <div id="routeCard"></div>
+
+</div>
+
+
+
+<!-- 入力フォーム -->
+<div id="controls">
+  <label>出発日時:
+    <input type="datetime-local" id="datetime">
+  </label>
+  <button id="nowButton" style="margin-top:10px;padding:10px 20px;">
+    現在時刻に更新
+  </button>
+
+  <div id="modeButtons">
+    <button data-mode="自宅→清瀬駅" class="active">自宅→清瀬駅</button>
+    <button data-mode="自宅→新座駅">自宅→新座駅</button>
+    <button data-mode="清瀬駅→自宅">清瀬駅→自宅</button>
+    <button data-mode="新座駅→自宅">新座駅→自宅</button>
+  </div>
+
+  <button onclick="searchBus()" style="margin-top:10px;padding:10px 20px;">検索</button>
+</div>
+
+<div id="dayTypeDisplay" style="padding:12px; font-size:16px; color:#333;"></div>
+<div id="results"></div>
+
+<script src="js/common.js"></script>
+<script src="js/transfer.js"></script>
+
+
+</body>
+</html>

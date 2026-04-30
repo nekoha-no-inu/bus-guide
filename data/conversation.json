@@ -1,0 +1,150 @@
+{
+  "home": {
+    "morning": {
+      "sunny": [
+        { "text": "おはよう！今日は晴れて気持ちいいね。どこに行く？", "expression": "normal" },
+        { "text": "朝日がきれいだよ。今日もいい一日になりそう。", "expression": "relax" }
+      ],
+      "cloudy": [
+        { "text": "おはよう。ちょっと曇ってるけど、出かけるにはちょうどいいかも。", "expression": "normal" }
+      ],
+      "rain": [
+        { "text": "おはよう。雨だから足元に気をつけてね。", "expression": "sad" }
+      ]
+    },
+
+    "noon": {
+      "sunny": [
+        { "text": "こんにちは！外は明るくて気持ちいいよ。", "expression": "relax" }
+      ],
+      "cloudy": [
+        { "text": "こんにちは。曇ってるけど過ごしやすいね。", "expression": "normal" }
+      ],
+      "rain": [
+        { "text": "こんにちは。雨が続いてるね。無理せず行こう。", "expression": "sad" }
+      ]
+    },
+
+    "night": {
+      "sunny": [
+        { "text": "こんばんは。夜風が気持ちいいね。", "expression": "relax" }
+      ],
+      "cloudy": [
+        { "text": "こんばんは。曇ってるけど静かな夜だね。", "expression": "normal" }
+      ],
+      "rain": [
+        { "text": "こんばんは。雨だから帰り道は気をつけてね。", "expression": "sad" }
+      ]
+    }
+  },
+  "transfer": {
+    "fromHome": {
+      "hurry": [
+      "あと{{leaveDiff}}分で家を出て、{{diff}}分後に「{{stop}}」から出る{{line}}系統に乗ってね。<br>急げば間に合うよ！<br>駅に着くのは{{arrive}}頃だよ。"
+      ],
+      "normal": [
+      "{{leaveDiff}}分後に家を出れば、{{diff}}分後に「{{stop}}」から出る{{line}}系統のバスに余裕で間に合うよ。<br>ちょうどいいタイミングだよ。<br>駅に着くのは{{arrive}}頃だよ。"
+      ],
+      "relax": [
+      "{{leaveDiff}}分後に家を出れば、{{diff}}分後に「{{stop}}」から出る{{line}}系統のバスに間に合うよ。<br>のんびり準備して大丈夫だよ。<br>駅に着くのは{{arrive}}頃だよ。"
+      ]
+    },
+
+    "toHome": {
+      "hurry": [
+      "{{diff}}分後に「{{stop}}」から出る{{line}}系統に乗れば、早く家に帰れるよ。<br>ちょうどいいタイミングだよ！<br>家に着くのは{{arrive}}頃だよ。"
+      ],
+      "relax": [
+      "{{diff}}分後に「{{stop}}」から出る{{line}}系統が一番早いよ。<br>ちょっと待ち時間が長いね…<br>家に着くのは{{arrive}}頃だよ。"
+      ]
+    },
+
+    "noBus": [
+      "ごめんね、この時間帯はバスが見つからなかったよ。",
+      "今日はこの時間のバスはないみたい。",
+      "別の時間を試してみてね。"
+    ],
+
+    "walkLong": [
+      "歩く時間が長いから気をつけてね。"
+    ]
+  },
+  "timetable": {
+    "noBus": [
+      {
+        "text": "この日はその路線のバスが見つからなかったよ。別の日付や方向を試してみてね。",
+        "expression": "normal"
+      },
+      {
+        "text": "今日はこの路線のバスがないみたいだよ。",
+        "expression": "relax"
+      },
+      {
+        "text": "ごめんね、この日は運行が見つからなかったよ。",
+        "expression": "sad"
+      }
+    ],
+    "found": [
+      {
+        "text": "{{line}} の時刻表だよ。<b>{{count}}</b> 本見つかったよ。",
+        "expression": "normal"
+      },
+      {
+        "text": "{{line}} のバスは <b>{{count}}</b> 本あるよ。",
+        "expression": "relax"
+      },
+      {
+        "text": "{{line}} の運行は <b>{{count}}</b> 本だよ。",
+        "expression": "normal"
+      }
+    ]
+
+  },
+  "weather": {
+    "today": {
+      "晴れ": [
+        { "text": "今日は晴れて気持ちいいよ！お出かけ日和だね。", "expression": "relax" }
+      ],
+      "曇り": [
+        { "text": "今日は曇りだよ。過ごしやすい気温かも。", "expression": "normal" }
+      ],
+      "雨": [
+        { "text": "今日は雨だよ。傘を忘れないでね。", "expression": "sad" }
+      ]
+    },
+
+    "tomorrow": {
+      "晴れ": [
+        { "text": "明日は晴れそうだよ。予定を立てるのにぴったり。", "expression": "relax" }
+      ],
+      "曇り": [
+        { "text": "明日は曇りみたい。気温は安定しそうだよ。", "expression": "normal" }
+      ],
+      "雨": [
+        { "text": "明日は雨の予報だよ。外出は気をつけてね。", "expression": "sad" }
+      ]
+    },
+
+    "week": {
+      "晴れ": [
+        { "text": "今週は晴れの日が多いよ。気分も明るくなるね。", "expression": "relax" }
+      ],
+      "曇り": [
+        { "text": "今週は曇りがちだよ。ゆっくり過ごすのもいいかも。", "expression": "normal" }
+      ],
+      "雨": [
+        { "text": "今週は雨の日が多いみたい。体調に気をつけてね。", "expression": "sad" }
+      ]
+    }
+  },
+  "garbage": {
+    "has": [
+      { "text": "今日はごみの日だよ。忘れずに出してね！", "expression": "normal" },
+      { "text": "収集があるよ。時間に余裕を持ってね。", "expression": "relax" }
+    ],
+    "none": [
+      { "text": "今日はごみ収集はないよ。ゆっくりしてね。", "expression": "relax" },
+      { "text": "今日は出すものはないみたい。", "expression": "normal" }
+    ]
+  }
+}

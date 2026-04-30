@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>天気予報</title>
+  <link rel="stylesheet" href="css/style.css">
+
+  <style>
+    .weather-row {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .weather-card {
+      flex: 1;
+      padding: 15px;
+      border-radius: 10px;
+      background: #f5f5f5;
+      text-align: center;
+    }
+    .weather-icon {
+      width: 50px;
+      height: 50px;
+    }
+
+    /* 横向き週間表 */
+    .week-scroll {
+      overflow-x: auto;
+      white-space: nowrap;
+      padding-bottom: 10px;
+    }
+    .week-table {
+      border-collapse: collapse;
+      display: inline-block;
+    }
+    .week-table th, .week-table td {
+      border: 1px solid #ccc;
+      padding: 8px 12px;
+      text-align: center;
+    }
+    .week-table th {
+      background: #eee;
+    }
+  </style>
+</head>
+<body>
+  <a href="home.html" class="menu-btn">← ホームに戻る</a>
+  <div class="character-area">
+    <div id="bubble" class="bubble">天気を読み込んでいるよ…</div>
+    <img id="character" src="img/character_normal.png" class="character">
+  </div>
+
+  <h2>今日と明日の天気</h2>
+
+  <div class="weather-row">
+    <div id="todayCard" class="weather-card"></div>
+    <div id="tomorrowCard" class="weather-card"></div>
+  </div>
+
+  <h2>週間天気予報</h2>
+  <div class="week-scroll">
+    <table class="week-table" id="weekTable"></table>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script src="js/weather.js"></script>
+
+</body>
+</html>

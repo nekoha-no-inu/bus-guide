@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ごみ収集日</title>
+  <link rel="stylesheet" href="css/style.css">
+
+  <style>
+    .garbage-card {
+      background: #f5f5f5;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 10px;
+    }
+    .garbage-title {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <a href="home.html" class="menu-btn">← ホームに戻る</a>
+  <div class="character-area">
+    <div id="bubble" class="bubble">収集日を確認しているよ…</div>
+    <img id="character" src="img/character_normal.png" class="character">
+  </div>
+
+  <h2>今日のごみ収集</h2>
+  <h3><div id="todayGarbage" class="garbage-card"></div></h3>
+
+  <h2>今週の収集スケジュール</h2>
+  <div id="weekGarbage"></div>
+
+    <h2>ゴミの出し方</h2>
+        <a href="https://www.city.kiyose.lg.jp/kurashi/gomi/gomi/1007406/index.html" class="menu-btn">
+        清瀬市HP（ゴミの出し方）
+        </a>
+
+
+  <script src="js/common.js"></script>
+  <script src="js/garbage.js"></script>
+
+</body>
+</html>

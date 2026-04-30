@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>バス時刻表</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="js/common.js"></script>
+<script src="js/timetable.js"></script>
+</head>
+
+<body>
+
+<h2>🕒 バス時刻表</h2>
+<a href="home.html" class="menu-btn">← ホームに戻る</a>
+
+<!-- キャラ案内 -->
+<div id="guide">
+  <div id="leftBlock">
+    <div id="bubble">どの路線の時刻表を見る？日付も選べるよ。</div>
+    <img id="character" src="img/character_normal.png">
+  </div>
+</div>
+
+<label>日付を選択：</label>
+<input type="date" id="dateInput">
+
+<button onclick="setToday()">今日に設定</button>
+
+<label>路線を選択：</label>
+<select id="lineSelect">
+  <option value="清61">清61系統</option>
+  <option value="清62">清62系統</option>
+  <option value="清63">清63系統</option>
+  <option value="清64">清64系統</option>
+</select>
+
+<label>方向を選択：</label>
+<select id="directionSelect">
+  <option value="清瀬駅方向">駅方向（上り）</option>
+  <option value="自宅方向">自宅方向（下り）</option>
+</select>
+
+<button onclick="loadTimetable()">時刻表を表示</button>
+
+<div id="result"></div>
+
+</body>
+</html>

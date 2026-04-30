@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>お助けクロくん</title>
+<link rel="stylesheet" href="css/style.css">
+
+</head>
+
+<body>
+
+<h2>お助けクロくん</h2>
+<div id="datetimeArea" style="text-align:center;margin-top:10px;">
+  <span id="currentDate"></span><br>
+  <span id="currentTime" style="font-size:1.2em;font-weight:bold;"></span>
+</div>
+<!-- キャラ案内エリア -->
+<div id="guide">
+  <div id="leftBlock">
+    <div id="bubble">今日もいい天気だね。どこに行く？</div>
+    <img id="character" src="img/character_normal.png">
+  </div>
+</div>
+
+<!-- メニュー -->
+<div class="menu">
+  <a href="transfer.html" class="menu-btn">🚌 バス乗換案内</a>
+  <a href="timetable.html" class="menu-btn">🕒 バス時刻表</a>
+  <a href="weather.html" class="menu-btn">🌤 天気</a>
+  <a href="garbage.html" class="menu-btn">🗑 ゴミ収集日</a>
+  <a href="memo.html" class="menu-btn">📝 共有メモ</a>
+</div>
+
+</body>
+
+<script src="js/common.js"></script>
+<script src="js/home.js"></script>
+</html>
