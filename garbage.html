@@ -7,16 +7,40 @@
 
   <style>
     .garbage-card {
-      background: #f5f5f5;
-      padding: 15px;
-      margin: 10px 0;
-      border-radius: 10px;
+        background: #f5f5f5;
+        padding: 15px;
+        margin: 10px auto;   /* ← 中央寄せ */
+        border-radius: 10px;
+        max-width: 300px;    /* ← 横幅を制限 */
     }
     .garbage-title {
       font-size: 1.2em;
+      margin: 10px auto;   /* ← 中央寄せ */
       font-weight: bold;
       margin-bottom: 5px;
+      max-width: 300px;    /* ← 横幅を制限 */
     }
+    /* ごみ収集ページ専用：キャラ案内を縦並びにする */
+    .character-area {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        max-width: 300px;   /* ← ここで横幅を制限 */
+        margin: 0 auto;
+    }
+
+    .character-area #bubble {
+        max-width: 100%;
+    }
+
+    .character-area #character {
+        width: 120px;
+    }
+    #weekGarbage, #todayGarbage {
+        max-width: 300px;
+        margin: 0 auto;
+    }
+
   </style>
 </head>
 <body>
@@ -27,7 +51,7 @@
   </div>
 
   <h2>今日のごみ収集</h2>
-  <h3><div id="todayGarbage" class="garbage-card"></div></h3>
+  <div id="todayGarbage" class="garbage-card"></div>
 
   <h2>今週の収集スケジュール</h2>
   <div id="weekGarbage"></div>
