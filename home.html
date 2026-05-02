@@ -31,7 +31,7 @@ loadLastUpdate();
 </script>
 
 
-<body>
+<body onload="initHome(); initCharacterImage();">
 <div style="text-align: right;" id="lastUpdate">最終更新：取得中...</div>
 <h2>お助けクロくん</h2>
 <div id="datetimeArea" style="text-align:center;margin-top:10px;">
@@ -42,7 +42,7 @@ loadLastUpdate();
 <div id="guide">
 <div class="character-area">
   <div id="bubble" class="bubble">ふぁぁ……呼んだ？</div>
-  <img id="character" src="img/character_normal.png" class="character">
+  <img id="character" class="character" src="img/character_normal.png" onclick="nextHomeTalk()">
 </div>
 </div>
 

@@ -35,7 +35,35 @@
       "rain": [
         { "text": "雨の夜だね…。帰り道、気をつけてね。", "expression": "sad" }
       ]
-    }
+    },
+
+    "homeTalk": [
+      { "text": "…こんにちは。外、明るいね。ちょっと眩しいけど。", "expression": "normal" },
+      { "text": "今日もゆっくりしていこうね…。", "expression": "relax" },
+      { "text": "眠い…。でも話すよ…。", "expression": "normal" },
+      { "text": "なんか用…？ ううん、別にいいけど…。", "expression": "normal" }
+    ],
+
+    "tapReactions": {
+  "tickle": [
+    { "text": "ちょ、ちょっと…！ くすぐったいよ…！", "expression": "surprised" },
+    { "text": "やめて…っ…！ ふふ…っ…！", "expression": "relax" }
+  ],
+  "blush": [
+    { "text": "そんなに触られると…ちょっと恥ずかしいんだけど…", "expression": "blush" },
+    { "text": "……べ、別に嬉しくなんか…ないよ…？", "expression": "blush" }
+  ],
+  "angry": [
+    { "text": "いい加減にして…？ ほんとに怒るよ…？", "expression": "angry" },
+    { "text": "しつこい…！ もう知らない…！", "expression": "angry" }
+  ],
+  "rare": [
+    { "text": "……そんなに構ってくれるの、嫌いじゃないけどね。", "expression": "blush" },
+    { "text": "……もう。ほんとに、しょうがない人だね。", "expression": "relax" }
+  ]
+}
+
+    
   },
 
 "transfer": {
