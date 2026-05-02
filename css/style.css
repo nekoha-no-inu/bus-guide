@@ -256,4 +256,60 @@ label {
   margin: 0;
 }
 
+/* 入力欄を大きくする（幅100%） */
+.add-item {
+  display: flex;
+  flex-direction: column; /* ← 下にボタンを配置 */
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.add-item input {
+  width: 100%;          /* 最大幅 */
+  padding: 12px;
+  font-size: 18px;
+  border: 2px solid #333;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+/* 追加ボタンを固定サイズで下に配置 */
+#addItemBtn {
+  width: 120px;         /* 固定サイズ */
+  padding: 10px;
+  font-size: 16px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  align-self: flex-start; /* ← 左寄せ */
+}
+
+/* カード内の削除ボタンを右端に固定サイズで */
+.delete-btn {
+  width: 70px;          /* 固定サイズ */
+  padding: 8px;
+  font-size: 14px;
+  background: #ff6666;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;       /* 右端で縮まない */
+}
+
+/* カードのレイアウト調整（右端にボタンを寄せる） */
+.item-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border: 2px solid #333;
+  border-radius: 10px;
+  background: #fff;
+  margin-bottom: 10px;
+}
+
+
 

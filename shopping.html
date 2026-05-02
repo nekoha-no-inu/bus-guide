@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>買い物リスト</title>
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+</head>
+<body>
+  <a href="home.html" class="menu-btn">← ホームに戻る</a>
+  
+
+    <!-- キャラと吹き出し -->
+    <div class="character-area">
+      <div id="bubble" class="bubble">買い物リストを読み込んでいるよ…</div>
+      <img id="character" src="img/character_normal.png" class="character">
+    </div>
+
+    <div class="container">
+    <h2>買い物リスト</h2>
+
+    <!-- 追加欄 -->
+    <div class="add-item">
+      <input id="itemInput" type="text" placeholder="買うものを入力">
+      <button id="addItemBtn">追加</button>
+    </div>
+
+    <!-- リスト表示 -->
+    <div id="shoppingList"></div>
+
+    <br>
+    <a href="home.html">← ホームに戻る</a>
+
+  </div>
+
+  <script src="js/shopping.js"></script>
+</body>
+</html>
