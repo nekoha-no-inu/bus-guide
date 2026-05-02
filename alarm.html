@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>タイマー & アラーム</title>
+
+<link rel="stylesheet" href="css/style.css">
+<link rel="manifest" href="manifest.json">
+
+
+<style>
+  
+  /* 入力UI */
+  .box {
+    background: #f7f7f7;
+    border: 2px solid #ccc;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+  }
+
+  .box h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+  }
+
+  input, button {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 8px;
+    margin-top: 10px;
+  }
+
+  button {
+    background: #4a90e2;
+    color: white;
+    border: none;
+  }
+
+  button:hover {
+    opacity: 0.9;
+  }
+</style>
+</head>
+
+<body>
+
+<h2>タイマー & アラーム</h2>
+
+<!-- 戻るボタン -->
+<a href="home.html" class="menu-btn">← ホームに戻る</a>
+
+<!-- キャラと吹き出し -->
+<div class="character-area">
+  <div id="bubble" class="bubble">タイマーやアラームを設定できるよ。</div>
+  <img id="character" src="img/character_normal.png" class="character">
+</div>
+
+<!-- タイマー設定 -->
+<div class="box">
+  <h3>⏱ タイマー</h3>
+  <input type="number" id="timerMinutes" placeholder="分を入力（例：5）">
+  <button id="startTimerBtn">タイマー開始</button>
+</div>
+
+<!-- アラーム設定 -->
+<div class="box">
+  <h3>⏰ アラーム</h3>
+  <input type="time" id="alarmTime">
+  <button id="setAlarmBtn">アラームをセット</button>
+</div>
+
+<!-- 共通スクリプト（吹き出し更新など） -->
+<script src="js/common.js"></script>
+
+<!-- タイマー・アラーム処理（後で実装） -->
+<script src="js/timer.js"></script>
+<script src="js/alarm.js"></script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js")
+      .then(() => console.log("SW registered"))
+      .catch(err => console.error("SW registration failed:", err));
+  }
+</script>
+
+
+</body>
+</html>

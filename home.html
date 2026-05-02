@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>お助けクロくん</title>
 <link rel="stylesheet" href="css/style.css">
+<link rel="manifest" href="manifest.json">
+
 
 </head>
 <script>
@@ -53,7 +55,17 @@ loadLastUpdate();
   <a href="weather.html" class="menu-btn">🌤 天気</a>
   <a href="garbage.html" class="menu-btn">🗑 ゴミ収集日</a>
   <a href="memo.html" class="menu-btn">📋 共有メモ</a>
+  <a href="alarm.html" class="menu-btn">⏱ タイマー & アラーム</a>
 </div>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js")
+      .then(() => console.log("SW registered"))
+      .catch(err => console.error("SW registration failed:", err));
+  }
+</script>
+
 
 </body>
 

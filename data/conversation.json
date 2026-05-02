@@ -38,9 +38,8 @@
     },
 
     "homeTalk": [
-      { "text": "…こんにちは。外、明るいね。ちょっと眩しいけど。", "expression": "normal" },
       { "text": "今日もゆっくりしていこうね…。", "expression": "relax" },
-      { "text": "眠い…。でも話すよ…。", "expression": "normal" },
+      { "text": "眠い…。", "expression": "normal" },
       { "text": "なんか用…？ ううん、別にいいけど…。", "expression": "normal" }
     ],
 
@@ -216,6 +215,39 @@
       "expression": "relax"
     }
   ]
+},
+
+  "timer": {
+    "start": [
+      { "text": "タイマーを {{minutes}} 分で開始するよ…", "expression": "normal" }
+    ],
+    "count": [
+      { "text": "あと {{m}} 分 {{s}} 秒だよ…", "expression": "normal" }
+    ],
+    "finish": [
+      { "text": "時間だよ…！", "expression": "normal" }
+    ],
+    "error": [
+      { "text": "時間を正しく入力してね…", "expression": "normal" }
+    ]
+  },
+
+  "alarm": {
+  "set": [
+    { "text": "{{time}} にアラームをセットしたよ…", "expression": "normal" }
+  ],
+  "count": [
+    { "text": "アラームまであと {{m}} 分だよ…", "expression": "normal" }
+  ],
+  "ring": [
+    { "text": "時間だよ…！起きて…！", "expression": "normal" }
+  ],
+  "error": [
+    { "text": "時間を正しく入力してね…", "expression": "normal" }
+  ]
 }
+
+
+
 
 }

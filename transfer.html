@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>バス乗換案内</title>
 <link rel="stylesheet" href="css/style.css">
+<link rel="manifest" href="manifest.json">
+
 </head>
 <style>
   /* ====== transfer.html 専用レイアウト ====== */
@@ -81,6 +83,14 @@
 
 <script src="js/common.js"></script>
 <script src="js/transfer.js"></script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js")
+      .then(() => console.log("SW registered"))
+      .catch(err => console.error("SW registration failed:", err));
+  }
+</script>
 
 
 </body>
