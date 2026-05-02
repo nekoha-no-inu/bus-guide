@@ -2,7 +2,15 @@
 <html>
 <head>
 <meta http-equiv="refresh" content="0; URL=home.html">
+<link rel="manifest" href="manifest.json">
 </head>
 <body>
+    <script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js")
+      .then(() => console.log("SW registered"))
+      .catch(err => console.error("SW registration failed:", err));
+  }
+</script>
 </body>
 </html>
