@@ -7,9 +7,32 @@
 <link rel="stylesheet" href="css/style.css">
 
 </head>
+<script>
+async function loadLastUpdate() {
+  try {
+    const res = await fetch("https://api.github.com/repos/nekoha-no-inu/bus-guide/commits/main");
+    const data = await res.json();
+
+    const date = new Date(data.commit.committer.date);
+    const formatted =
+      `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日 `
+      + `${date.getHours()}時${date.getMinutes()}分`;
+
+    document.getElementById("lastUpdate").innerText =
+      `最終更新：${formatted}`;
+
+  } catch (e) {
+    document.getElementById("lastUpdate").innerText =
+      "最終更新：取得できませんでした";
+  }
+}
+
+loadLastUpdate();
+</script>
+
 
 <body>
-<div style="text-align: right;">2026/5/1 17:15更新</div>
+<div style="text-align: right;" id="lastUpdate">最終更新：取得中...</div>
 <h2>お助けクロくん</h2>
 <div id="datetimeArea" style="text-align:center;margin-top:10px;">
   <span id="currentDate"></span><br>
@@ -17,10 +40,10 @@
 </div>
 <!-- キャラ案内エリア -->
 <div id="guide">
-  <div id="leftBlock">
-    <div id="bubble">今日もいい天気だね。どこに行く？</div>
-    <img id="character" src="img/character_normal.png">
-  </div>
+<div class="character-area">
+  <div id="bubble" class="bubble">ふぁぁ……呼んだ？</div>
+  <img id="character" src="img/character_normal.png" class="character">
+</div>
 </div>
 
 <!-- メニュー -->
@@ -36,4 +59,5 @@
 
 <script src="js/common.js"></script>
 <script src="js/home.js"></script>
+
 </html>

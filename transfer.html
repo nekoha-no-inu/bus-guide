@@ -26,21 +26,6 @@
     gap: 10px;
   }
 
-  /* 吹き出し */
-  #bubble {
-    max-width: 260px;
-    padding: 10px;
-    background: #ffffff;
-    border-radius: 10px;
-    border: 2px solid #333;
-  }
-
-  /* キャラ画像 */
-  #character {
-    width: 120px;
-    height: auto;
-  }
-
   /* ルートカード */
   #routeCard {
     background: #fff;
@@ -59,8 +44,10 @@
 
   <!-- 左側：吹き出し＋キャラを縦に並べる -->
   <div id="leftBlock">
-    <div id="bubble"></div>
-    <img id="character" src="img/character_normal.png">
+    <div class="character-area">
+  <div id="bubble" class="bubble">…</div>
+  <img id="character" src="img/character_normal.png" class="character">
+</div>
   </div>
 
   <!-- 右側：ルートカード -->
