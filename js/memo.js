@@ -60,7 +60,7 @@ loadMemo();
 // --------------------------------------
 document.getElementById("saveBtn").addEventListener("click", async () => {
   const text = document.getElementById("memoArea").value;
-  const password = document.getElementById("password").value;
+  const password ="Pancake";
 
   if (!password) {
     document.getElementById("bubble").innerText = "パスワードを入力してね。";
