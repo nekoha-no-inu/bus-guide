@@ -101,9 +101,10 @@ function createShoppingCard(item) {
   const right = document.createElement("div");
   right.className = "shopping-right";
 
-  // 1段目：分類
+  // 1段目：分類プルダウン
   const categorySelect = document.createElement("select");
   categorySelect.className = "shopping-category";
+
   ["urgent", "find", "later"].forEach(cat => {
     const opt = document.createElement("option");
     opt.value = cat;
@@ -116,6 +117,7 @@ function createShoppingCard(item) {
   const nameSpan = document.createElement("span");
   nameSpan.className = "shopping-name";
   nameSpan.innerText = item.name;
+  if (item.checked) nameSpan.classList.add("checked");
 
   // 3段目：編集＋削除
   const actions = document.createElement("div");
@@ -123,7 +125,7 @@ function createShoppingCard(item) {
 
   const editBtn = document.createElement("button");
   editBtn.className = "shopping-edit";
-  editBtn.innerText = "編集";
+  editBtn.innerText = "✏️";
 
   const delBtn = document.createElement("button");
   delBtn.className = "shopping-delete";
@@ -139,8 +141,51 @@ function createShoppingCard(item) {
   card.appendChild(checkbox);
   card.appendChild(right);
 
+  // ===== ここからイベント設定 =====
+
+  // チェックボックス：チェック状態更新＋見た目
+checkbox.addEventListener("change", () => {
+  db.collection("shopping").doc(item.id).update({
+    checked: checkbox.checked
+  });
+
+  // 見た目だけ更新
+  nameSpan.classList.toggle("checked", checkbox.checked);
+});
+
+
+  // カテゴリ変更：Firestore更新＋色だけ即反映
+  categorySelect.addEventListener("change", () => {
+    const newCat = categorySelect.value;
+
+    db.collection("shopping").doc(item.id).update({
+      category: newCat
+    });
+
+    card.classList.remove("cat-urgent", "cat-find", "cat-later");
+    card.classList.add(categoryClass(newCat));
+  });
+
+  // 編集ボタン：名前編集
+  editBtn.addEventListener("click", () => {
+    const newName = prompt("名前を編集", item.name);
+    if (newName && newName.trim() !== "") {
+      db.collection("shopping").doc(item.id).update({
+        name: newName.trim()
+      });
+      loadShoppingList();
+    }
+  });
+
+  // 削除ボタン：削除＋再読み込み
+  delBtn.addEventListener("click", () => {
+    db.collection("shopping").doc(item.id).delete();
+    loadShoppingList();
+  });
+
   return card;
 }
+
 
 
 
