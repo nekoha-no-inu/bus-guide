@@ -379,15 +379,17 @@ label {
 
 /* 1段目：分類プルダウン */
 .shopping-category {
-  width: 140px;
+  background-color: none;
+  width: 200px;
   padding: 4px;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 /* 2段目：名称（可変長） */
 .shopping-name {
   flex: 1;
   min-width: 0;
+  font-size: 20px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -401,18 +403,16 @@ label {
 }
 
 .shopping-edit {
-  background: #4caf50;
-  color:white;
-  border: none;
+  background:none;
+  color: #4caf50;
+  border: 3px solid #4caf50;
   cursor: pointer;
 }
 
 .shopping-delete {
-  background: #e74c3c;
-  color: white;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 4px;
+  background: none;
+  color: #e74c3c;
+  border: 3px solid #e74c3c;
   cursor: pointer;
 }
 
