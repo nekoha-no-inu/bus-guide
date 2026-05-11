@@ -21,7 +21,7 @@ const db = firebase.firestore();
 const categoryOrder = { urgent: 1, find: 2, later: 3 };
 
 const categoryLabel = (cat) =>
-  ({ urgent: "すぐ必要", find: "見つけたら買う", later: "そのうち買う" }[cat]);
+  ({ urgent: "優先度：高", find: "普通", later: "低め" }[cat]);
 
 const categoryClass = (cat) =>
   ({ urgent: "cat-urgent", find: "cat-find", later: "cat-later" }[cat]);
@@ -44,51 +44,40 @@ function setCharacterExpression(type) {
 
 
 // ======================================
-// Firestore → DOM 生成
+// ToDo 読み込み
 // ======================================
-async function loadShoppingList() {
-  const listArea = document.getElementById("shoppingList");
+async function loadTodoList() {
+  const listArea = document.getElementById("todoList");
   listArea.innerHTML = "";
 
-  const snapshot = await db.collection("shopping").get();
+  const snapshot = await db.collection("todo").get();
   const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-  // --- 並び替え（チェック状態 → カテゴリ → 名前） ---
+  // 並び替え：未完了 → 完了 → カテゴリ → 名前
   items.sort((a, b) => {
-    // 1. 未チェックを先に、チェック済みを後ろに
-    if (a.checked !== b.checked) {
-      return a.checked - b.checked; // false(0) → true(1)
-    }
-
-    // 2. 同じチェック状態の中ではカテゴリ順
-    if (categoryOrder[a.category] !== categoryOrder[b.category]) {
+    if (a.checked !== b.checked) return a.checked - b.checked;
+    if (categoryOrder[a.category] !== categoryOrder[b.category])
       return categoryOrder[a.category] - categoryOrder[b.category];
-    }
-
-    // 3. 最後に名前順
     return a.name.localeCompare(b.name);
   });
 
-
-  // メッセージ
   const messages = [
-    "買い物リストを読み込んだよ！",
-    "今日も買い物リストを確認しておくね。",
-    "保存してあったリストを表示したよ。",
-    "買い物リスト、準備できたよ〜！"
+    "ToDoリストを読み込んだよ！",
+    "今日もタスクを確認しておくね。",
+    "保存してあったToDoを表示したよ。",
+    "準備できたよ〜！"
   ];
   document.getElementById("bubble").innerText = randomMessage(messages);
   setCharacterExpression("relax");
 
-  // DOM 生成
-  items.forEach(item => listArea.appendChild(createShoppingCard(item)));
+  items.forEach(item => listArea.appendChild(createTodoCard(item)));
 }
 
 
 // ======================================
-// カード生成（1アイテム）
+// カード生成
 // ======================================
-function createShoppingCard(item) {
+function createTodoCard(item) {
   const card = document.createElement("div");
   card.className = `shopping-card ${categoryClass(item.category)}`;
 
@@ -97,11 +86,11 @@ function createShoppingCard(item) {
   checkbox.type = "checkbox";
   checkbox.checked = item.checked;
 
-  // 右側3段コンテナ
+  // 右側3段
   const right = document.createElement("div");
   right.className = "shopping-right";
 
-  // 1段目：分類プルダウン
+  // 1段目：分類
   const categorySelect = document.createElement("select");
   categorySelect.className = "shopping-category";
 
@@ -141,71 +130,57 @@ function createShoppingCard(item) {
   card.appendChild(checkbox);
   card.appendChild(right);
 
-  // ===== ここからイベント設定 =====
+  // ===== イベント =====
 
-  // チェックボックス：チェック状態更新＋見た目
-checkbox.addEventListener("change", () => {
-  db.collection("shopping").doc(item.id).update({
-    checked: checkbox.checked
+  checkbox.addEventListener("change", () => {
+    db.collection("todo").doc(item.id).update({
+      checked: checkbox.checked
+    });
+    nameSpan.classList.toggle("checked", checkbox.checked);
   });
 
-  // 見た目だけ更新
-  nameSpan.classList.toggle("checked", checkbox.checked);
-});
-
-
-  // カテゴリ変更：Firestore更新＋色だけ即反映
   categorySelect.addEventListener("change", () => {
     const newCat = categorySelect.value;
-
-    db.collection("shopping").doc(item.id).update({
-      category: newCat
-    });
+    db.collection("todo").doc(item.id).update({ category: newCat });
 
     card.classList.remove("cat-urgent", "cat-find", "cat-later");
     card.classList.add(categoryClass(newCat));
   });
 
-  // 編集ボタン：名前編集
   editBtn.addEventListener("click", () => {
-    const newName = prompt("名前を編集", item.name);
+    const newName = prompt("タスク名を編集", item.name);
     if (newName && newName.trim() !== "") {
-      db.collection("shopping").doc(item.id).update({
-        name: newName.trim()
-      });
-      loadShoppingList();
+      db.collection("todo").doc(item.id).update({ name: newName.trim() });
+      loadTodoList();
     }
   });
 
-  // 削除ボタン：削除＋再読み込み
   delBtn.addEventListener("click", () => {
-    db.collection("shopping").doc(item.id).delete();
-    loadShoppingList();
+    db.collection("todo").doc(item.id).delete();
+    loadTodoList();
   });
 
   return card;
 }
 
 
-
-
 // ======================================
-// アイテム追加
+// 追加
 // ======================================
-document.getElementById("addItemBtn").addEventListener("click", async () => {
-  const input = document.getElementById("itemInput");
-  const categorySelect = document.getElementById("categorySelect");
+document.getElementById("addTodoBtn").addEventListener("click", async () => {
+  const input = document.getElementById("todoInput");
+  const categorySelect = document.getElementById("todoCategory");
 
   const name = input.value.trim();
   const category = categorySelect.value;
 
   if (!name) {
-    document.getElementById("bubble").innerText = "買うものを入力してね。";
+    document.getElementById("bubble").innerText = "タスクを入力してね。";
     setCharacterExpression("hurry");
     return;
   }
 
-  await db.collection("shopping").add({
+  await db.collection("todo").add({
     name,
     checked: false,
     category
@@ -214,22 +189,22 @@ document.getElementById("addItemBtn").addEventListener("click", async () => {
   input.value = "";
 
   const messages = [
-    "買い物リストに追加したよ！",
-    "新しいアイテムを入れておいたよ！",
-    "買い物リストを更新したよ〜！"
+    "ToDoを追加したよ！",
+    "新しいタスクを入れておいたよ！",
+    "ToDoリストを更新したよ〜！"
   ];
   document.getElementById("bubble").innerText = randomMessage(messages);
   setCharacterExpression("normal");
 
-  loadShoppingList();
+  loadTodoList();
 });
 
 
 // ======================================
-// 並べ替え（＝再読み込み）
+// 並べ替え（再読み込み）
 // ======================================
-document.getElementById("sortBtn").addEventListener("click", loadShoppingList);
+document.getElementById("sortTodoBtn").addEventListener("click", loadTodoList);
 
 
 // 初回ロード
-loadShoppingList();
+loadTodoList();
