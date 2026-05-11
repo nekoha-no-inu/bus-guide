@@ -1,6 +1,6 @@
-// --------------------------------------
-// Firebase 設定
-// --------------------------------------
+// ======================================
+// Firebase 初期化
+// ======================================
 const firebaseConfig = {
   apiKey: "AIzaSyBmeWvWTcre86zaZPUtS1kEAjpmzUNQ9mw",
   authDomain: "bus-guide-memo.firebaseapp.com",
@@ -14,96 +14,167 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// --------------------------------------
-// キャラの表情変更
-// --------------------------------------
+
+// ======================================
+// ユーティリティ
+// ======================================
+const categoryOrder = { urgent: 1, find: 2, later: 3 };
+
+const categoryLabel = (cat) =>
+  ({ urgent: "すぐ必要", find: "見つけたら買う", later: "そのうち買う" }[cat]);
+
+const categoryClass = (cat) =>
+  ({ urgent: "cat-urgent", find: "cat-find", later: "cat-later" }[cat]);
+
+const randomMessage = (list) =>
+  list[Math.floor(Math.random() * list.length)];
+
 function setCharacterExpression(type) {
   const img = document.getElementById("character");
   if (!img) return;
 
-  if (type === "hurry") img.src = "img/character_hurry.png";
-  else if (type === "relax") img.src = "img/character_relax.png";
-  else img.src = "img/character_normal.png";
+  const map = {
+    hurry: "img/character_hurry.png",
+    relax: "img/character_relax.png",
+    normal: "img/character_normal.png"
+  };
+
+  img.src = map[type] || map.normal;
 }
 
-// --------------------------------------
-// ランダムメッセージ
-// --------------------------------------
-function randomMessage(list) {
-  return list[Math.floor(Math.random() * list.length)];
-}
 
-// --------------------------------------
-// 買い物リスト読み込み
-// --------------------------------------
+// ======================================
+// Firestore → DOM 生成
+// ======================================
 async function loadShoppingList() {
   const listArea = document.getElementById("shoppingList");
   listArea.innerHTML = "";
 
-  const snapshot = await db.collection("shopping").orderBy("name").get();
+  const snapshot = await db.collection("shopping").get();
+  const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
+  // --- 並び替え（チェック状態 → カテゴリ → 名前） ---
+  items.sort((a, b) => {
+    // 1. 未チェックを先に、チェック済みを後ろに
+    if (a.checked !== b.checked) {
+      return a.checked - b.checked; // false(0) → true(1)
+    }
+
+    // 2. 同じチェック状態の中ではカテゴリ順
+    if (categoryOrder[a.category] !== categoryOrder[b.category]) {
+      return categoryOrder[a.category] - categoryOrder[b.category];
+    }
+
+    // 3. 最後に名前順
+    return a.name.localeCompare(b.name);
+  });
+
+
+  // メッセージ
   const messages = [
     "買い物リストを読み込んだよ！",
     "今日も買い物リストを確認しておくね。",
     "保存してあったリストを表示したよ。",
     "買い物リスト、準備できたよ〜！"
   ];
-
   document.getElementById("bubble").innerText = randomMessage(messages);
   setCharacterExpression("relax");
 
-  snapshot.forEach(doc => {
-    const item = doc.data();
-
-    const card = document.createElement("div");
-    card.className = "item-card";
-
-    const left = document.createElement("div");
-    left.className = "item-left";
-
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = item.checked;
-
-    checkbox.addEventListener("change", () => {
-      db.collection("shopping").doc(doc.id).update({
-        checked: checkbox.checked
-      });
-      nameSpan.classList.toggle("checked", checkbox.checked);
-    });
-
-    const nameSpan = document.createElement("span");
-    nameSpan.className = "item-name";
-    nameSpan.innerText = item.name;
-    if (item.checked) nameSpan.classList.add("checked");
-
-    left.appendChild(checkbox);
-    left.appendChild(nameSpan);
-
-    const delBtn = document.createElement("button");
-    delBtn.className = "delete-btn";
-    delBtn.innerText = "削除";
-
-    delBtn.addEventListener("click", () => {
-      db.collection("shopping").doc(doc.id).delete();
-      loadShoppingList();
-    });
-
-    card.appendChild(left);
-    card.appendChild(delBtn);
-
-    listArea.appendChild(card);
-  });
+  // DOM 生成
+  items.forEach(item => listArea.appendChild(createShoppingCard(item)));
 }
 
-loadShoppingList();
 
-// --------------------------------------
+// ======================================
+// カード生成（1アイテム）
+// ======================================
+function createShoppingCard(item) {
+  const card = document.createElement("div");
+  card.className = `shopping-card ${categoryClass(item.category)}`;
+
+  const left = document.createElement("div");
+  left.className = "shopping-left";
+
+  // --- チェックボックス ---
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = item.checked;
+  checkbox.addEventListener("change", () => {
+    db.collection("shopping").doc(item.id).update({ checked: checkbox.checked });
+    nameSpan.classList.toggle("checked", checkbox.checked);
+  });
+
+  // --- カテゴリ編集 ---
+  const categorySelect = document.createElement("select");
+  categorySelect.className = "shopping-category";
+
+  ["urgent", "find", "later"].forEach(cat => {
+    const opt = document.createElement("option");
+    opt.value = cat;
+    opt.innerText = categoryLabel(cat);
+    if (item.category === cat) opt.selected = true;
+    categorySelect.appendChild(opt);
+  });
+
+  categorySelect.addEventListener("change", () => {
+    const newCat = categorySelect.value;
+
+    db.collection("shopping").doc(item.id).update({ category: newCat });
+
+    // 色だけリアルタイム変更
+    card.classList.remove("cat-urgent", "cat-find", "cat-later");
+    card.classList.add(categoryClass(newCat));
+  });
+
+  // --- 名称 ---
+  const nameSpan = document.createElement("span");
+  nameSpan.className = "shopping-name";
+  nameSpan.innerText = item.name;
+  if (item.checked) nameSpan.classList.add("checked");
+
+  // --- 編集ボタン ---
+  const editBtn = document.createElement("button");
+  editBtn.className = "shopping-edit";
+  editBtn.innerText = "✏️";
+  editBtn.addEventListener("click", () => {
+    const newName = prompt("名前を編集", item.name);
+    if (newName && newName.trim() !== "") {
+      db.collection("shopping").doc(item.id).update({ name: newName.trim() });
+      loadShoppingList();
+    }
+  });
+
+  // 左側まとめ
+  left.appendChild(checkbox);
+  left.appendChild(categorySelect);
+  left.appendChild(nameSpan);
+  left.appendChild(editBtn);
+
+  // --- 削除ボタン ---
+  const delBtn = document.createElement("button");
+  delBtn.className = "shopping-delete";
+  delBtn.innerText = "削除";
+  delBtn.addEventListener("click", () => {
+    db.collection("shopping").doc(item.id).delete();
+    loadShoppingList();
+  });
+
+  card.appendChild(left);
+  card.appendChild(delBtn);
+
+  return card;
+}
+
+
+// ======================================
 // アイテム追加
-// --------------------------------------
+// ======================================
 document.getElementById("addItemBtn").addEventListener("click", async () => {
   const input = document.getElementById("itemInput");
+  const categorySelect = document.getElementById("categorySelect");
+
   const name = input.value.trim();
+  const category = categorySelect.value;
 
   if (!name) {
     document.getElementById("bubble").innerText = "買うものを入力してね。";
@@ -113,7 +184,8 @@ document.getElementById("addItemBtn").addEventListener("click", async () => {
 
   await db.collection("shopping").add({
     name,
-    checked: false
+    checked: false,
+    category
   });
 
   input.value = "";
@@ -123,9 +195,18 @@ document.getElementById("addItemBtn").addEventListener("click", async () => {
     "新しいアイテムを入れておいたよ！",
     "買い物リストを更新したよ〜！"
   ];
-
   document.getElementById("bubble").innerText = randomMessage(messages);
   setCharacterExpression("normal");
 
   loadShoppingList();
 });
+
+
+// ======================================
+// 並べ替え（＝再読み込み）
+// ======================================
+document.getElementById("sortBtn").addEventListener("click", loadShoppingList);
+
+
+// 初回ロード
+loadShoppingList();
