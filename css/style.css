@@ -309,102 +309,113 @@ label {
 /* ======================================
    買い物リスト：追加欄
 ====================================== */
-/* 追加欄（横並び） */
+/* 追加欄：縦並び */
 .add-item {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
-/* 入力欄：ある程度の大きさを維持 */
+/* 入力欄：横幅いっぱい */
 .add-item input {
-  flex: 1;               /* ← 可変長の主役 */
-  min-width: 160px;      /* ← 最低幅を確保 */
-  padding: 10px;
+  width: 100%;
+  padding: 12px;
   font-size: 16px;
 }
 
-/* 分類プルダウン：最低限の大きさ */
+/* 分類プルダウン */
 .add-item select {
-  padding: 8px;
+  width: 100%;
+  padding: 10px;
   font-size: 14px;
-  width: 130px;
-  flex-shrink: 0;
 }
 
-/* 追加ボタン・並べ替えボタン：最低限の大きさ */
-.action-btn {
-  padding: 8px 14px;
-  font-size: 14px;
-  width: 100px;
-  flex-shrink: 0;
+/* 追加＋並べ替えボタン（横並び） */
+.add-buttons {
+  display: flex;
+  gap: 10px;
 }
+
+.add-buttons .action-btn {
+  flex: 1;
+  padding: 10px;
+  font-size: 14px;
+}
+
 
 
 /* ======================================
    買い物リスト：カード
 ====================================== */
-/* カード全体（横並び） */
+/* カード全体：チェック左、右側は縦3段 */
 .shopping-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
-  padding: 8px;
-  margin: 6px 0;
-  border-radius: 6px;
+  padding: 10px;
+  margin: 8px 0;
   background: #fff;
   border-left: 6px solid #ccc;
+  border-radius: 6px;
 }
 
-/* 左側（チェック・分類・名称・編集） */
-.shopping-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;               /* ← 名称が伸びるための余白を確保 */
-}
-
-/* 分類プルダウン（カード内） */
-.shopping-category {
-  width: 130px;
+/* チェックボックス（左端固定 → 上下中央揃え＋大きく） */
+.shopping-card input[type="checkbox"] {
   flex-shrink: 0;
+  align-self: center;     /* ← 上下中央揃え */
+  transform: scale(1.6);  /* ← 大きくする（1.4〜1.8が推奨） */
+  margin: 0 6px 0 0;      /* ← 位置調整（必要に応じて） */
+}
+
+
+/* 右側の3段コンテナ */
+.shopping-right {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+/* 1段目：分類プルダウン */
+.shopping-category {
+  width: 140px;
   padding: 4px;
   font-size: 14px;
 }
 
-/* 名称：可変長で適切に伸びる */
+/* 2段目：名称（可変長） */
 .shopping-name {
   flex: 1;
-  min-width: 0;          /* ← これが無いと省略が効かない */
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* 編集ボタン（最低限の大きさ） */
-.shopping-edit {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 18px;
-  width: 30px;
-  padding: 0 4px;
-  flex-shrink: 0;
+/* 3段目：編集＋削除（右寄せ） */
+.shopping-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
-/* 削除ボタン：右寄せ & 最低限の大きさ */
+.shopping-edit {
+  background: #4caf50;
+  color:white;
+  border: none;
+  cursor: pointer;
+}
+
 .shopping-delete {
   background: #e74c3c;
   color: white;
   border: none;
   padding: 6px 10px;
   border-radius: 4px;
-  width: 80px;
   cursor: pointer;
-  flex-shrink: 0;
-  margin-left: auto;     /* ← 右端に寄せる */
 }
+
 
 
 /* カテゴリ色 */

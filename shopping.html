@@ -24,19 +24,22 @@
   <div class="container">
     <h2>買い物リスト</h2>
 
-    <!-- 追加欄（横並び対応済み） -->
-    <div class="add-item">
-      <input id="itemInput" type="text" placeholder="買うものを入力">
+<!-- 追加欄 -->
+<div class="add-item">
+  <input id="itemInput" type="text" placeholder="買うものを入力">
 
-      <select id="categorySelect">
-        <option value="urgent">すぐ必要</option>
-        <option value="find">見つけたら買う</option>
-        <option value="later">そのうち買う</option>
-      </select>
+  <select id="categorySelect">
+    <option value="urgent">すぐ必要</option>
+    <option value="find">見つけたら買う</option>
+    <option value="later">そのうち買う</option>
+  </select>
 
-      <button id="addItemBtn" class="action-btn">追加</button>
-      <button id="sortBtn" class="action-btn">並べ替え</button>
-    </div>
+  <div class="add-buttons">
+    <button id="addItemBtn" class="action-btn">追加</button>
+    <button id="sortBtn" class="action-btn">並べ替え</button>
+  </div>
+</div>
+
 
     <!-- リスト表示（shopping.js がここにカードを生成） -->
     <div id="shoppingList"></div>

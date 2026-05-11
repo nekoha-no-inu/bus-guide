@@ -92,22 +92,18 @@ function createShoppingCard(item) {
   const card = document.createElement("div");
   card.className = `shopping-card ${categoryClass(item.category)}`;
 
-  const left = document.createElement("div");
-  left.className = "shopping-left";
-
-  // --- チェックボックス ---
+  // 左端：チェックボックス
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
   checkbox.checked = item.checked;
-  checkbox.addEventListener("change", () => {
-    db.collection("shopping").doc(item.id).update({ checked: checkbox.checked });
-    nameSpan.classList.toggle("checked", checkbox.checked);
-  });
 
-  // --- カテゴリ編集 ---
+  // 右側3段コンテナ
+  const right = document.createElement("div");
+  right.className = "shopping-right";
+
+  // 1段目：分類
   const categorySelect = document.createElement("select");
   categorySelect.className = "shopping-category";
-
   ["urgent", "find", "later"].forEach(cat => {
     const opt = document.createElement("option");
     opt.value = cat;
@@ -116,54 +112,36 @@ function createShoppingCard(item) {
     categorySelect.appendChild(opt);
   });
 
-  categorySelect.addEventListener("change", () => {
-    const newCat = categorySelect.value;
-
-    db.collection("shopping").doc(item.id).update({ category: newCat });
-
-    // 色だけリアルタイム変更
-    card.classList.remove("cat-urgent", "cat-find", "cat-later");
-    card.classList.add(categoryClass(newCat));
-  });
-
-  // --- 名称 ---
+  // 2段目：名称
   const nameSpan = document.createElement("span");
   nameSpan.className = "shopping-name";
   nameSpan.innerText = item.name;
-  if (item.checked) nameSpan.classList.add("checked");
 
-  // --- 編集ボタン ---
+  // 3段目：編集＋削除
+  const actions = document.createElement("div");
+  actions.className = "shopping-actions";
+
   const editBtn = document.createElement("button");
   editBtn.className = "shopping-edit";
-  editBtn.innerText = "✏️";
-  editBtn.addEventListener("click", () => {
-    const newName = prompt("名前を編集", item.name);
-    if (newName && newName.trim() !== "") {
-      db.collection("shopping").doc(item.id).update({ name: newName.trim() });
-      loadShoppingList();
-    }
-  });
+  editBtn.innerText = "編集";
 
-  // 左側まとめ
-  left.appendChild(checkbox);
-  left.appendChild(categorySelect);
-  left.appendChild(nameSpan);
-  left.appendChild(editBtn);
-
-  // --- 削除ボタン ---
   const delBtn = document.createElement("button");
   delBtn.className = "shopping-delete";
   delBtn.innerText = "削除";
-  delBtn.addEventListener("click", () => {
-    db.collection("shopping").doc(item.id).delete();
-    loadShoppingList();
-  });
 
-  card.appendChild(left);
-  card.appendChild(delBtn);
+  actions.appendChild(editBtn);
+  actions.appendChild(delBtn);
+
+  right.appendChild(categorySelect);
+  right.appendChild(nameSpan);
+  right.appendChild(actions);
+
+  card.appendChild(checkbox);
+  card.appendChild(right);
 
   return card;
 }
+
 
 
 // ======================================
