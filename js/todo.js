@@ -3,8 +3,6 @@
 // ======================================
 // Firebase は firebase.js で初期化済み（db を参照）
 
-// ---- カテゴリ定義 ----
-
 const CATEGORY_ORDER = { urgent: 1, find: 2, later: 3 };
 
 const CATEGORY_LABEL = {
@@ -58,14 +56,25 @@ function createTodoCard(item) {
   const card = document.createElement("div");
   card.className = `shopping-card ${CATEGORY_CLASS[item.category]}`;
 
+  // チェックボックス（左端）
   const checkbox    = document.createElement("input");
   checkbox.type    = "checkbox";
   checkbox.checked = item.checked;
 
+  // 右側コンテナ（縦2段）
   const right = document.createElement("div");
   right.className = "shopping-right";
 
-  // 分類プルダウン
+  // 1段目：名称（折り返しあり・主役）
+  const nameSpan     = document.createElement("span");
+  nameSpan.className = "shopping-name";
+  nameSpan.innerText = item.name;
+  if (item.checked) nameSpan.classList.add("checked");
+
+  // 2段目：分類＋操作ボタン
+  const meta = document.createElement("div");
+  meta.className = "shopping-meta";
+
   const categorySelect    = document.createElement("select");
   categorySelect.className = "shopping-category";
   ["urgent", "find", "later"].forEach(cat => {
@@ -76,30 +85,22 @@ function createTodoCard(item) {
     categorySelect.appendChild(opt);
   });
 
-  // 名称
-  const nameSpan     = document.createElement("span");
-  nameSpan.className = "shopping-name";
-  nameSpan.innerText = item.name;
-  if (item.checked) nameSpan.classList.add("checked");
-
-  // 操作ボタン
   const actions = document.createElement("div");
   actions.className = "shopping-actions";
-
   const editBtn     = document.createElement("button");
   editBtn.className = "shopping-edit";
   editBtn.innerText = "編集";
-
   const delBtn     = document.createElement("button");
   delBtn.className = "shopping-delete";
   delBtn.innerText = "削除";
-
   actions.append(editBtn, delBtn);
-  // 横1行：名前（主役）→ 分類 → 操作ボタン
-  right.append(nameSpan, categorySelect, actions);
+
+  meta.append(categorySelect, actions);
+  right.append(nameSpan, meta);
   card.append(checkbox, right);
 
-  // イベント
+  // ---- イベント ----
+
   checkbox.addEventListener("change", () => {
     db.collection("todo").doc(item.id).update({ checked: checkbox.checked });
     nameSpan.classList.toggle("checked", checkbox.checked);

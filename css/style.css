@@ -362,47 +362,43 @@ label {
   box-sizing: border-box;
 }
 
-/* カード全体：1行横並び */
+/* カード全体：チェック左＋右側コンテナ */
 .shopping-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   padding: 6px 8px;
   margin: 4px 0;
   background: #fff;
   border-left: 4px solid #ccc;
   border-radius: 6px;
-  min-height: 40px;
 }
 
-/* チェックボックス：小さめ固定 */
+/* チェックボックス：上端揃え・固定サイズ */
 .shopping-card input[type="checkbox"] {
   flex-shrink: 0;
   width: 16px;
   height: 16px;
-  margin: 0;
+  margin-top: 3px; /* 名前テキストの行高に合わせて微調整 */
   cursor: pointer;
 }
 
-/* 右側コンテナ：横1行に変更 */
+/* 右側コンテナ：縦2段（名前 / 分類+ボタン） */
 .shopping-right {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
   flex: 1;
   min-width: 0;
 }
 
-/* 名称：主役・最大限スペースを使う */
+/* 名称：折り返しあり・主役 */
 .shopping-name {
-  flex: 1;
-  min-width: 0;
   font-size: 16px;
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;   /* 折り返し許可 */
+  word-break: break-all;
+  line-height: 1.4;
 }
 
 /* 名称：チェック済みは取り消し線＋薄く */
@@ -411,11 +407,19 @@ label {
   color: #aaa;
 }
 
-/* 分類プルダウン：小さく右端 */
+/* 2段目：分類＋操作ボタンを横並び */
+.shopping-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* 分類プルダウン・日付：小さく */
 .shopping-category {
   flex-shrink: 0;
   width: auto;
-  max-width: 90px;
+  max-width: 110px;
   padding: 2px 4px;
   font-size: 11px;
   border: 1px solid #ccc;
@@ -427,18 +431,12 @@ label {
   cursor: pointer;
 }
 
-/* 日付入力（スケジューラー用）：小さく右端 */
-input[type="date"].shopping-category {
-  max-width: 110px;
-  font-size: 11px;
-  padding: 2px 4px;
-}
-
-/* 編集・削除ボタン：アイコンのみ・最小サイズ */
+/* 編集・削除ボタン */
 .shopping-actions {
   display: flex;
   flex-shrink: 0;
   gap: 4px;
+  margin-left: auto; /* 右端に寄せる */
 }
 
 .shopping-edit,

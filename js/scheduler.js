@@ -42,43 +42,46 @@ function createScheduleCard(item) {
   const card = document.createElement("div");
   card.className = "shopping-card";
 
+  // チェックボックス（左端）
   const checkbox    = document.createElement("input");
   checkbox.type    = "checkbox";
   checkbox.checked = item.checked;
 
+  // 右側コンテナ（縦2段）
   const right = document.createElement("div");
   right.className = "shopping-right";
 
-  // 日付入力
-  const dateInput    = document.createElement("input");
-  dateInput.type     = "date";
-  dateInput.className = "shopping-category";
-  dateInput.value    = item.date;
-
-  // 名称
+  // 1段目：名称（折り返しあり・主役）
   const nameSpan     = document.createElement("span");
   nameSpan.className = "shopping-name";
   nameSpan.innerText = item.name;
   if (item.checked) nameSpan.classList.add("checked");
 
-  // 操作ボタン
+  // 2段目：日付＋操作ボタン
+  const meta = document.createElement("div");
+  meta.className = "shopping-meta";
+
+  const dateInput     = document.createElement("input");
+  dateInput.type      = "date";
+  dateInput.className = "shopping-category";
+  dateInput.value     = item.date;
+
   const actions = document.createElement("div");
   actions.className = "shopping-actions";
-
   const editBtn     = document.createElement("button");
   editBtn.className = "shopping-edit";
   editBtn.innerText = "✏️";
-
   const delBtn     = document.createElement("button");
   delBtn.className = "shopping-delete";
   delBtn.innerText = "削除";
-
   actions.append(editBtn, delBtn);
-  // 横1行：名前（主役）→ 日付 → 操作ボタン
-  right.append(nameSpan, dateInput, actions);
+
+  meta.append(dateInput, actions);
+  right.append(nameSpan, meta);
   card.append(checkbox, right);
 
-  // イベント
+  // ---- イベント ----
+
   checkbox.addEventListener("change", () => {
     db.collection("schedule").doc(item.id).update({ checked: checkbox.checked });
     nameSpan.classList.toggle("checked", checkbox.checked);
