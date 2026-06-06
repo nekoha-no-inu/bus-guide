@@ -96,7 +96,8 @@ function createShoppingCard(item) {
     "名前を編集"
   );
 
-  right.append(categorySelect, nameSpan, actions);
+  // 横1行：名前（主役）→ 分類 → 操作ボタン
+  right.append(nameSpan, categorySelect, actions);
   card.append(checkbox, right);
 
   // イベント

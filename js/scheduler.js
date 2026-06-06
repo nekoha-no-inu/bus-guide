@@ -74,7 +74,8 @@ function createScheduleCard(item) {
   delBtn.innerText = "削除";
 
   actions.append(editBtn, delBtn);
-  right.append(dateInput, nameSpan, actions);
+  // 横1行：名前（主役）→ 日付 → 操作ボタン
+  right.append(nameSpan, dateInput, actions);
   card.append(checkbox, right);
 
   // イベント
