@@ -466,3 +466,92 @@ label {
 .cat-urgent { border-left-color: #e74c3c; }
 .cat-find   { border-left-color: #3498db; }
 .cat-later  { border-left-color: #7f8c8d; }
+
+/* ======================================
+   時刻表スタイル
+====================================== */
+
+.timetable-section {
+  margin: 16px 0;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.timetable-title {
+  background: var(--primary, #4caf50);
+  color: #fff;
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 15px;
+}
+
+.timetable-legend {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #666;
+  background: #f5f5f5;
+  border-bottom: 1px solid #eee;
+}
+
+.timetable-grid {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.timetable-row {
+  display: table-row;
+  border-bottom: 1px solid #eee;
+}
+
+.timetable-row:last-child {
+  border-bottom: none;
+}
+
+.timetable-hour {
+  display: table-cell;
+  width: 36px;
+  padding: 6px 8px;
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--primary, #4caf50);
+  vertical-align: top;
+  text-align: right;
+  border-right: 2px solid var(--primary, #4caf50);
+  background: #f9fff9;
+}
+
+.timetable-mins {
+  display: table-cell;
+  padding: 6px 8px;
+  vertical-align: top;
+}
+
+/* 時刻アイテム */
+.time-item {
+  display: inline-block;
+  margin: 2px 4px;
+  font-size: 16px;
+  font-weight: 500;
+  position: relative;
+}
+
+/* 枝番バッジ（上付き） */
+.sub-badge {
+  font-size: 10px;
+  font-weight: bold;
+  padding: 1px 3px;
+  border-radius: 3px;
+  vertical-align: super;
+  line-height: 1;
+}
+
+/* 枝番ごとに色を変える */
+.sub-badge-清61-1, .sub-badge-61-1 { background: #fff3cd; color: #856404; }
+.sub-badge-清61-3, .sub-badge-61-3 { background: #cff4fc; color: #055160; }
+.sub-badge-清62-1, .sub-badge-62-1 { background: #d1e7dd; color: #0a3622; }
+.sub-badge-清63-1, .sub-badge-63-1 { background: #f8d7da; color: #842029; }
+.sub-badge-清63-2, .sub-badge-63-2 { background: #e2d9f3; color: #432874; }
+.sub-badge-深夜   { background: #212529; color: #fff; }

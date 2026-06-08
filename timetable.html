@@ -6,48 +6,37 @@
 <title>バス時刻表</title>
 <link rel="stylesheet" href="css/style.css">
 <link rel="manifest" href="manifest.json">
-
-<script src="js/common.js"></script>
-<script src="js/timetable.js"></script>
 </head>
-
 <body>
 
 <h2>🕒 バス時刻表</h2>
 <a href="home.html" class="menu-btn">← ホームに戻る</a>
 
-<!-- キャラ案内 -->
-<div id="guide">
-　<div class="character-area">
+<div class="character-area">
   <div id="bubble" class="bubble">どの路線の時刻表を見る…？</div>
   <img id="character" src="img/character_normal.png" class="character">
 </div>
 
-</div>
-
-<label>日付を選択：</label>
+<label>日付：</label>
 <input type="date" id="dateInput">
+<button onclick="setToday()">今日</button>
 
-<button onclick="setToday()">今日に設定</button>
+<label>バス停：</label>
+<select id="stopSelect" onchange="updateDirection()"></select>
 
-<label>出発バス停：</label>
-<select id="stopSelect" onchange="updateGetoff()"></select>
+<label>方向：</label>
+<select id="directionSelect"></select>
 
-<label>行先バス停：</label>
-<select id="getoffSelect"></select>
-
-<button onclick="loadTimetable()">時刻表を表示</button>
+<button onclick="loadTimetable()">📋 時刻表を表示</button>
 
 <div id="result"></div>
 
+<script src="js/common.js"></script>
+<script src="js/timetable.js"></script>
 <script>
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js")
-      .then(() => console.log("SW registered"))
-      .catch(err => console.error("SW registration failed:", err));
+    navigator.serviceWorker.register("service-worker.js");
   }
 </script>
-
-
 </body>
 </html>
