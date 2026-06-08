@@ -6,16 +6,67 @@
 <title>バス乗換案内</title>
 <link rel="stylesheet" href="css/style.css">
 <link rel="manifest" href="manifest.json">
+<style>
+  /* キャラ＋ルートカード 横並び */
+  #guide {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin: 10px 0;
+  }
+  #routeCard {
+    background: #fff;
+    border: 2px solid #555;
+    border-radius: 10px;
+    padding: 12px 14px;
+    line-height: 1.8;
+    font-size: 14px;
+    display: none;
+    min-width: 170px;
+  }
+  /* 前/次ボタン */
+  #navButtons {
+    display: flex;
+    gap: 10px;
+    margin: 6px 0 12px;
+  }
+  #prevBtn, #nextBtn {
+    flex: 1;
+    padding: 10px;
+    font-size: 15px;
+    border-radius: 8px;
+    border: 2px solid var(--primary, #4caf50);
+    background: #fff;
+    color: var(--primary, #4caf50);
+    cursor: pointer;
+    width: auto;
+  }
+  #prevBtn:disabled, #nextBtn:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+</style>
 </head>
 <body>
 
 <a href="home.html" class="menu-btn">← ホームに戻る</a>
 
-<div class="character-area">
-  <div id="bubble" class="bubble">…</div>
-  <img id="character" src="img/character_normal.png" class="character">
+<!-- キャラ＋ルートカード -->
+<div id="guide">
+  <div class="character-area">
+    <div id="bubble" class="bubble">…</div>
+    <img id="character" src="img/character_normal.png" class="character">
+  </div>
+  <div id="routeCard"></div>
 </div>
 
+<!-- 前/次ボタン（上部） -->
+<div id="navButtons">
+  <button id="prevBtn" disabled>◀ 前のバス</button>
+  <button id="nextBtn" disabled>次のバス ▶</button>
+</div>
+
+<!-- 検索フォーム -->
 <div id="controls">
   <label>出発日時：
     <input type="datetime-local" id="datetime">
@@ -33,7 +84,9 @@
 </div>
 
 <div id="dayTypeDisplay"></div>
-<div id="results"></div>
+
+<!-- 系統グループカード -->
+<div id="groupCards"></div>
 
 <script src="js/common.js"></script>
 <script src="js/transfer.js"></script>
