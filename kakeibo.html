@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>家計簿</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="manifest" href="manifest.json">
+<style>
+#summary { background:#fff; border-radius:10px; padding:14px; margin:12px 0; box-shadow:0 1px 4px rgba(0,0,0,.1); }
+.summary-row { display:flex; justify-content:space-between; padding:5px 0; font-size:15px; border-bottom:1px solid #f0f0f0; }
+.summary-row:last-child { border:none; font-size:17px; }
+.summary-income  { color:#2196F3; font-weight:bold; }
+.summary-expense { color:#e74c3c; font-weight:bold; }
+.summary-balance.plus { color:#4caf50; font-weight:bold; }
+.summary-balance.minus{ color:#e74c3c; font-weight:bold; }
+#monthNav { display:flex; align-items:center; gap:8px; margin:8px 0; }
+#monthNav button { flex:1; padding:10px; border-radius:8px; border:2px solid #4caf50; background:#fff; color:#4caf50; font-size:15px; cursor:pointer; width:auto; }
+#monthTitle { flex:2; text-align:center; font-size:17px; font-weight:bold; }
+.page-links { display:flex; gap:10px; margin:10px 0; }
+.page-links a { flex:1; display:block; text-align:center; padding:12px; border-radius:8px; background:#4caf50; color:#fff; text-decoration:none; font-size:15px; font-weight:bold; }
+.page-links a:nth-child(2) { background:#2196F3; }
+.sub-section { background:#fff; border-radius:8px; margin:8px 0; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+.sub-section h4 { margin:0; padding:8px 12px; background:#f5f5f5; font-size:13px; color:#666; border-bottom:1px solid #eee; }
+.sub-item { display:flex; justify-content:space-between; padding:7px 12px; border-bottom:1px solid #f5f5f5; font-size:14px; }
+.sub-item:last-child { border:none; }
+.sub-amount { font-weight:bold; color:#e74c3c; }
+#loading { text-align:center; color:#999; padding:20px; }
+</style>
+</head>
+<body>
+
+<a href="home.html" class="menu-btn">← ホームに戻る</a>
+
+<div class="character-area">
+  <div id="bubble" class="bubble">読み込み中…</div>
+  <img id="character" src="img/character_normal.png" class="character">
+</div>
+
+<div id="monthNav">
+  <button onclick="changeMonth(-1)">◀ 前月</button>
+  <div id="monthTitle">―</div>
+  <button onclick="changeMonth(+1)">次月 ▶</button>
+</div>
+
+<div id="summary"><div id="loading">読み込み中…</div></div>
+
+<div class="page-links">
+  <a href="kakeibo-input.html">＋ 入力</a>
+  <a href="kakeibo-detail.html">📋 明細</a>
+</div>
+
+<div id="breakdown"></div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="js/common.js"></script>
+<script src="js/firebase.js"></script>
+<script src="js/kakeibo-initial-data.js"></script>
+<script src="js/kakeibo.js"></script>
+<script>
+let currentYM = thisMonth(); // "2026-06"
+
+function ymLabel(ym) {
+  const [y, m] = ym.split("-");
+  return `${y}年${parseInt(m)}月`;
+}
+
+function changeMonth(delta) {
+  let [y, m] = currentYM.split("-").map(Number);
+  m += delta;
+  if (m > 12) { m = 1; y++; }
+  if (m < 1)  { m = 12; y--; }
+  currentYM = `${y}-${String(m).padStart(2,"0")}`;
+  render();
+}
+
+async function render() {
+  document.getElementById("monthTitle").textContent = ymLabel(currentYM);
+  document.getElementById("summary").innerHTML = '<div id="loading">読み込み中…</div>';
+  document.getElementById("breakdown").innerHTML = "";
+
+  const records = await fetchRecords(currentYM);
+
+  const income  = records.filter(r => r.type === "収入").reduce((s,r) => s + Number(r.amount), 0);
+  const expense = records.filter(r => r.type === "支出").reduce((s,r) => s + Number(r.amount), 0);
+  const balance = income - expense;
+
+  document.getElementById("summary").innerHTML = `
+    <div class="summary-row"><span>収入</span><span class="summary-income">${fmt(income)}</span></div>
+    <div class="summary-row"><span>支出</span><span class="summary-expense">${fmt(expense)}</span></div>
+    <div class="summary-row"><span>収支</span><span class="summary-balance ${balance>=0?'plus':'minus'}">${balance>=0?'+':''}${fmt(balance)}</span></div>
+  `;
+
+  // 小項目別集計
+  const bySubcat = {};
+  records.filter(r => r.type === "支出").forEach(r => {
+    const k = r.subcategory || r.category;
+    bySubcat[k] = (bySubcat[k] || 0) + Number(r.amount);
+  });
+
+  const bd = document.getElementById("breakdown");
+  bd.innerHTML = `<h3 style="margin:12px 0 6px;font-size:15px;">小項目別の支出</h3>`;
+
+  if (Object.keys(bySubcat).length === 0) {
+    bd.innerHTML += `<p style="color:#999;font-size:14px;">この月のデータはないよ。</p>`;
+  } else {
+    const sec = document.createElement("div");
+    sec.className = "sub-section";
+    Object.entries(bySubcat)
+      .sort((a,b) => b[1]-a[1])
+      .forEach(([label, amount]) => {
+        sec.innerHTML += `<div class="sub-item"><span>${label}</span><span class="sub-amount">${fmt(amount)}</span></div>`;
+      });
+    bd.appendChild(sec);
+  }
+
+  // キャラセリフ
+  const [,m] = currentYM.split("-");
+  if (expense === 0 && income === 0) {
+    document.getElementById("bubble").innerHTML = "この月のデータはまだないよ。";
+    setCharacterExpression("normal");
+  } else if (balance >= 0) {
+    document.getElementById("bubble").innerHTML = `${parseInt(m)}月は<b>${fmt(balance)}</b>のプラスだよ！よかったね🎉`;
+    setCharacterExpression("relax");
+  } else {
+    document.getElementById("bubble").innerHTML = `${parseInt(m)}月は<b>${fmt(Math.abs(balance))}</b>の赤字だよ…気をつけてね😢`;
+    setCharacterExpression("hurry");
+  }
+}
+
+window.addEventListener("load", async () => {
+  await importInitialDataIfNeeded();
+  render();
+});
+</script>
+</body>
+</html>

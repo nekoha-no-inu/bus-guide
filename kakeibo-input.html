@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>家計簿 入力</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="manifest" href="manifest.json">
+</head>
+<body>
+
+<a href="kakeibo.html" class="menu-btn">← 家計簿に戻る</a>
+
+<div class="character-area">
+  <div id="bubble" class="bubble">何を買ったか教えてね！</div>
+  <img id="character" src="img/character_normal.png" class="character">
+</div>
+
+<label>日付</label>
+<input type="date" id="f-date">
+
+<label>種別</label>
+<select id="f-type" onchange="onTypeChange()">
+  <option value="支出">支出</option>
+  <option value="収入">収入</option>
+</select>
+
+<label>大項目</label>
+<select id="f-category">
+  <option value="固定費">固定費</option>
+  <option value="変動費">変動費</option>
+  <option value="臨時出費">臨時出費</option>
+  <option value="旅費">旅費</option>
+</select>
+
+<div id="subcategory-block">
+  <label>小項目</label>
+  <select id="f-subcategory">
+    <option>住居費</option><option>水道光熱費</option><option>通信費</option>
+    <option>保険料</option><option>食費</option><option>日用品費</option>
+    <option>被服費</option><option>美容費</option><option>交際費</option>
+    <option>趣味費</option><option>交通費</option><option>教育費</option>
+    <option>医療費</option><option>特別費</option><option>雑費</option>
+  </select>
+</div>
+
+<label>内容</label>
+<input type="text" id="f-description" placeholder="例：BigA、社食など">
+
+<label>金額（円）</label>
+<input type="number" id="f-amount" min="0" placeholder="例：1200">
+
+<label>出した人</label>
+<select id="f-person">
+  <option value="みき">みき</option>
+  <option value="みほ">みほ</option>
+</select>
+
+<button onclick="submitRecord()">✅ 決定</button>
+<button onclick="location.href='kakeibo.html'" style="background:#999;border:none;color:#fff;border-radius:8px;padding:12px;width:100%;margin-top:6px;font-size:16px;cursor:pointer;">戻る</button>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="js/common.js"></script>
+<script src="js/firebase.js"></script>
+<script src="js/kakeibo-initial-data.js"></script>
+<script src="js/kakeibo.js"></script>
+<script>
+function onTypeChange() {
+  const type   = document.getElementById("f-type").value;
+  const catSel = document.getElementById("f-category");
+  const subBlk = document.getElementById("subcategory-block");
+
+  if (type === "収入") {
+    catSel.innerHTML = `<option value="給与">給与</option><option value="臨時収入">臨時収入</option>`;
+    subBlk.style.display = "none";
+    document.getElementById("bubble").innerHTML = "収入を記録するね！";
+    setCharacterExpression("relax");
+  } else {
+    catSel.innerHTML = ["固定費","変動費","臨時出費","旅費"]
+      .map(v => `<option value="${v}">${v}</option>`).join("");
+    subBlk.style.display = "block";
+    document.getElementById("bubble").innerHTML = "支出を記録するね。";
+    setCharacterExpression("normal");
+  }
+}
+
+async function submitRecord() {
+  const date   = document.getElementById("f-date").value;
+  const type   = document.getElementById("f-type").value;
+  const cat    = document.getElementById("f-category").value;
+  const subcat = type === "支出" ? document.getElementById("f-subcategory").value : "";
+  const desc   = document.getElementById("f-description").value.trim();
+  const amount = parseInt(document.getElementById("f-amount").value, 10);
+  const person = document.getElementById("f-person").value;
+
+  if (!date || !desc || !amount || isNaN(amount)) {
+    document.getElementById("bubble").innerHTML = "日付・内容・金額は必ず入力してね！";
+    setCharacterExpression("hurry");
+    return;
+  }
+
+  document.getElementById("bubble").innerHTML = "保存中…";
+  setCharacterExpression("normal");
+
+  try {
+    await addRecord({ type, date, category: cat, subcategory: subcat, description: desc, amount, person });
+    document.getElementById("bubble").innerHTML = `${desc}（${amount.toLocaleString()}円）を記録したよ！`;
+    setCharacterExpression("relax");
+    document.getElementById("f-description").value = "";
+    document.getElementById("f-amount").value      = "";
+    document.getElementById("f-date").value        = todayStr();
+  } catch(e) {
+    document.getElementById("bubble").innerHTML = "保存に失敗したよ…もう一度試してね。";
+    setCharacterExpression("hurry");
+    console.error(e);
+  }
+}
+
+window.addEventListener("load", () => {
+  document.getElementById("f-date").value = todayStr();
+});
+</script>
+</body>
+</html>
