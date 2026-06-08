@@ -1,5 +1,5 @@
 // ======================================
-// timetable.js  ─  バス時刻表（リメイク版）
+// timetable.js  ─  バス時刻表
 // ======================================
 
 let _routes    = [];
@@ -16,14 +16,13 @@ async function loadAllCSV() {
       return Object.fromEntries(header.map((h, i) => [h, cols[i]]));
     });
   };
-
   [_routes, _schedules] = await Promise.all([
     fetch("data/routes.csv").then(r => r.text()).then(parse),
     fetch("data/schedules.csv").then(r => r.text()).then(parse)
   ]);
 }
 
-// ---- 系統グループ："清61-1" → "清61"、"深夜" はそのまま ----
+// ---- 系統グループ ----
 
 function routeGroup(line) {
   return line.replace(/-\d+$/, "");
@@ -38,139 +37,118 @@ function getDayType(dateStr) {
   return "平日";
 }
 
-// ---- 今日の日付をセット ----
-
 function setToday() {
   const now = new Date();
-  const pad = n => String(n).padStart(2, "0");
+  const p   = n => String(n).padStart(2, "0");
   document.getElementById("dateInput").value =
-    `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    `${now.getFullYear()}-${p(now.getMonth()+1)}-${p(now.getDate())}`;
 }
 
-// ---- 乗車バス停プルダウンを構築 ----
+// ---- ルートボタンを生成 ----
+// routes.csv の (stop → getoff) の組み合わせをユニークに列挙してボタン化
 
-function buildStopSelect() {
-  // 自宅周辺バス停（routes.csvの自宅→ or 駅→自宅の乗車バス停）
-  const fromHome    = [...new Set(_routes.filter(r => r.mode.startsWith("自宅→")).map(r => r.stop))];
-  const fromStation = [...new Set(_routes.filter(r => r.mode.endsWith("→自宅")).map(r => r.stop))];
+function buildRouteButtons() {
+  // stop→getoff の重複を除いた組み合わせリスト
+  const seen = new Set();
+  const combos = [];
 
-  const sel = document.getElementById("stopSelect");
-  sel.innerHTML = "";
+  _routes.forEach(r => {
+    if (!r.getoff) return;
+    const key = `${r.stop}→${r.getoff}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      combos.push({ stop: r.stop, getoff: r.getoff, direction: r.direction });
+    }
+  });
 
-  const addGroup = (label, stops) => {
-    const grp = document.createElement("optgroup");
-    grp.label = label;
-    stops.forEach(st => {
-      const opt = document.createElement("option");
-      opt.value = st;
-      opt.textContent = st;
-      grp.appendChild(opt);
+  const container = document.getElementById("routeButtons");
+  container.innerHTML = "";
+
+  combos.forEach(({ stop, getoff, direction }) => {
+    const btn = document.createElement("button");
+    btn.className   = "route-select-btn";
+    btn.textContent = `${stop} → ${getoff}`;
+    btn.dataset.stop      = stop;
+    btn.dataset.getoff    = getoff;
+    btn.dataset.direction = direction;
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".route-select-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      loadTimetable(stop, direction);
     });
-    sel.appendChild(grp);
-  };
-
-  addGroup("自宅周辺バス停", fromHome);
-  addGroup("駅", fromStation);
-
-  updateDirection();
-}
-
-// ---- 方向プルダウンを更新 ----
-
-function updateDirection() {
-  const stop = document.getElementById("stopSelect").value;
-  const sel  = document.getElementById("directionSelect");
-  sel.innerHTML = "";
-
-  // このバス停が routes.csv に登場するすべての方向を列挙
-  const directions = [...new Set(
-    _routes.filter(r => r.stop === stop).map(r => r.direction)
-  )];
-
-  directions.forEach(dir => {
-    const opt = document.createElement("option");
-    opt.value = dir;
-
-    // 表示名：「清瀬駅方向 → 清瀬駅行き」のように変換
-    const label = dir === "清瀬駅方向" ? "清瀬駅行き（清瀬駅北口方向）"
-                : dir === "新座駅方向" ? "新座駅行き（新座駅南口方向）"
-                : dir;
-    opt.textContent = label;
-    sel.appendChild(opt);
+    container.appendChild(btn);
   });
 }
 
 // ---- 時刻表表示 ----
 
-function loadTimetable() {
-  const dateStr   = document.getElementById("dateInput").value;
-  const stop      = document.getElementById("stopSelect").value;
-  const direction = document.getElementById("directionSelect").value;
-
-  if (!dateStr || !stop || !direction) return;
+function loadTimetable(stop, direction) {
+  const dateStr = document.getElementById("dateInput").value;
+  if (!dateStr) {
+    alert("日付を選んでね。");
+    return;
+  }
 
   const dayType = getDayType(dateStr);
   const result  = document.getElementById("result");
   result.innerHTML = "";
 
-  // このバス停・この方向を通るすべての系統をグループ化して取得
-  // グループキー = routeGroup(line)
-  const groupMap = {};   // { "清61": { "清61": [...], "清61-1": [...], ... }, ... }
+  // 該当するすべての系統・時刻を収集してグループ化
+  const groupMap = {};  // { "清61": { "清61": [times], "清61-1": [times] }, ... }
 
   _schedules
     .filter(s => s.stop === stop && s.direction === direction && s.day_type === dayType)
     .forEach(s => {
-      const grp = routeGroup(s.route);
-      if (!groupMap[grp]) groupMap[grp] = {};
-      if (!groupMap[grp][s.route]) groupMap[grp][s.route] = [];
-      groupMap[grp][s.route].push(s.depart_time);
+      const g = routeGroup(s.route);
+      if (!groupMap[g]) groupMap[g] = {};
+      if (!groupMap[g][s.route]) groupMap[g][s.route] = [];
+      groupMap[g][s.route].push(s.depart_time);
     });
 
+  document.getElementById("timetableHeader").innerHTML =
+    `<b>${stop} → （${direction === "清瀬駅方向" ? "清瀬駅行き" : "新座駅行き"}）</b>　${dayType}ダイヤ`;
+
   if (Object.keys(groupMap).length === 0) {
-    result.innerHTML = "<p>この条件での時刻表は見つからなかったよ。</p>";
-    document.getElementById("bubble").innerHTML = "バスが見つからなかったよ…日付や方向を確認してね。";
+    result.innerHTML = "<p>この条件での時刻表はないよ。</p>";
+    document.getElementById("bubble").innerHTML = "バスが見つからなかったよ…日付を確認してね。";
     setCharacterExpression("relax");
     return;
   }
 
   document.getElementById("bubble").innerHTML =
-    `${stop}（${direction === "清瀬駅方向" ? "清瀬駅行き" : "新座駅行き"}）<br>${dayType}ダイヤだよ📋`;
+    `${stop}（${direction === "清瀬駅方向" ? "清瀬駅行き" : "新座駅行き"}）<br>${dayType}ダイヤの時刻表だよ📋`;
   setCharacterExpression("normal");
 
-  // グループ順（清61 → 清62 → …）でテーブルを生成
   Object.keys(groupMap).sort().forEach(grp => {
     const lines    = groupMap[grp];
     const mainLine = grp;
 
-    // 全系統の全時刻を「時:分 + 系統タグ」で収集
-    // { "06": [ {min:"15", line:"清61"}, {min:"25", line:"清61-1"}, ... ] }
+    // 時ごとに { min, line } を集める
     const byHour = {};
-
     Object.entries(lines).forEach(([line, times]) => {
       times.forEach(t => {
-        const [h, m] = t.split(":");
-        const hour   = h.padStart(2, "0");
-        const min    = m.padStart(2, "0");
-        if (!byHour[hour]) byHour[hour] = [];
-        byHour[hour].push({ min, line });
+        const [hRaw, mRaw] = t.split(":");
+        const h = hRaw.padStart(2, "0");
+        const m = mRaw.padStart(2, "0");
+        if (!byHour[h]) byHour[h] = [];
+        byHour[h].push({ min: m, line });
       });
     });
 
-    // 同じ時刻で複数系統が重なる場合を整理
-    // 同時刻は「出発時刻+系統」で dedup してから分ごとにソート
+    // dedup & sort
     Object.keys(byHour).forEach(h => {
       const seen = new Set();
       byHour[h] = byHour[h]
         .filter(item => {
-          const key = `${item.min}-${item.line}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
+          const k = `${item.min}-${item.line}`;
+          if (seen.has(k)) return false;
+          seen.add(k);
           return true;
         })
         .sort((a, b) => a.min.localeCompare(b.min));
     });
 
-    // ---- テーブル描画 ----
+    // セクション
     const section = document.createElement("div");
     section.className = "timetable-section";
 
@@ -184,13 +162,14 @@ function loadTimetable() {
     if (subLines.length > 0) {
       const legend = document.createElement("div");
       legend.className = "timetable-legend";
-      legend.innerHTML = subLines.map(l =>
-        `<span class="sub-badge sub-badge-${l.replace(/[^a-zA-Z0-9]/g, "")}">${l}</span> = ${l}系統`
-      ).join("　");
+      legend.innerHTML = subLines.map(l => {
+        const suffix = l.replace(mainLine, "");
+        return `<span class="sub-badge sub-badge-${l.replace(/[^a-zA-Z0-9]/g, "")}">${suffix}</span> = ${l}系統`;
+      }).join("　");
       section.appendChild(legend);
     }
 
-    // 時刻グリッド
+    // グリッド
     const table = document.createElement("div");
     table.className = "timetable-grid";
 
@@ -199,8 +178,8 @@ function loadTimetable() {
       row.className = "timetable-row";
 
       const hourCell = document.createElement("div");
-      hourCell.className = "timetable-hour";
-      hourCell.textContent = `${parseInt(hour)}`;
+      hourCell.className   = "timetable-hour";
+      hourCell.textContent = String(parseInt(hour));
       row.appendChild(hourCell);
 
       const minsCell = document.createElement("div");
@@ -210,15 +189,15 @@ function loadTimetable() {
         const item = document.createElement("span");
         item.className = "time-item";
 
-        const timeSpan = document.createElement("span");
+        const timeSpan       = document.createElement("span");
         timeSpan.textContent = min;
         item.appendChild(timeSpan);
 
-        // 枝番バッジ
         if (line !== mainLine) {
-          const badge = document.createElement("sup");
-          badge.className = `sub-badge sub-badge-${line.replace(/[^a-zA-Z0-9]/g, "")}`;
-          badge.textContent = line.replace(mainLine, "");  // "-1", "-3" などだけ表示
+          const badge       = document.createElement("sup");
+          const suffix      = line.replace(mainLine, "");
+          badge.className   = `sub-badge sub-badge-${line.replace(/[^a-zA-Z0-9]/g, "")}`;
+          badge.textContent = suffix;
           item.appendChild(badge);
         }
 
@@ -239,5 +218,5 @@ function loadTimetable() {
 window.addEventListener("load", async () => {
   await loadAllCSV();
   setToday();
-  buildStopSelect();
+  buildRouteButtons();
 });

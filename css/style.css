@@ -555,3 +555,106 @@ label {
 .sub-badge-清63-1, .sub-badge-63-1 { background: #f8d7da; color: #842029; }
 .sub-badge-清63-2, .sub-badge-63-2 { background: #e2d9f3; color: #432874; }
 .sub-badge-深夜   { background: #212529; color: #fff; }
+
+/* ======================================
+   乗換案内：系統グループカード
+====================================== */
+
+#dayTypeDisplay {
+  padding: 6px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.group-card {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+  margin: 10px 0;
+  overflow: hidden;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--primary, #4caf50);
+  padding: 6px 12px;
+}
+
+.group-title {
+  color: #fff;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+.group-nav {
+  display: flex;
+  gap: 6px;
+}
+
+.group-nav-prev,
+.group-nav-next {
+  padding: 4px 10px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid #fff;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  width: auto;
+}
+
+.group-nav-prev:disabled,
+.group-nav-next:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.group-body {
+  padding: 10px 12px;
+}
+
+.group-line-name {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 6px;
+}
+
+.group-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  color: #444;
+}
+
+/* ======================================
+   時刻表：ルート選択ボタン
+====================================== */
+
+#routeButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.route-select-btn {
+  padding: 8px 14px;
+  font-size: 14px;
+  border-radius: 20px;
+  border: 2px solid var(--primary, #4caf50);
+  background: #fff;
+  color: var(--primary, #4caf50);
+  cursor: pointer;
+  white-space: nowrap;
+  width: auto;
+}
+
+.route-select-btn.active {
+  background: var(--primary, #4caf50);
+  color: #fff;
+}

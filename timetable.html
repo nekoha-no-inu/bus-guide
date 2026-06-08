@@ -13,7 +13,7 @@
 <a href="home.html" class="menu-btn">← ホームに戻る</a>
 
 <div class="character-area">
-  <div id="bubble" class="bubble">どの路線の時刻表を見る…？</div>
+  <div id="bubble" class="bubble">ルートボタンを押してね📋</div>
   <img id="character" src="img/character_normal.png" class="character">
 </div>
 
@@ -21,14 +21,9 @@
 <input type="date" id="dateInput">
 <button onclick="setToday()">今日</button>
 
-<label>バス停：</label>
-<select id="stopSelect" onchange="updateDirection()"></select>
+<div id="routeButtons"></div>
 
-<label>方向：</label>
-<select id="directionSelect"></select>
-
-<button onclick="loadTimetable()">📋 時刻表を表示</button>
-
+<div id="timetableHeader" style="padding:8px 0; font-size:15px; color:#555;"></div>
 <div id="result"></div>
 
 <script src="js/common.js"></script>

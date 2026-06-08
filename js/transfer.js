@@ -9,14 +9,15 @@ let holidayList = [];
 let routes      = [];
 let schedules   = [];
 
-// 検索結果キャッシュ（前/次ボタン用）
-let _allCandidates = [];   // 全候補（ソート済み）
-let _currentIndex  = 0;   // 現在表示中のインデックス
+// 系統グループ別の候補リスト { "清61": [...全便], "清62": [...], ... }
+let _groupCandidates = {};
+// 系統グループ別の現在インデックス { "清61": 0, "清62": 0, ... }
+let _groupIndex = {};
 
 // ---- データ読み込み ----
 
 async function loadHolidays() {
-  const data  = await fetch(HOLIDAY_API).then(r => r.json());
+  const data = await fetch(HOLIDAY_API).then(r => r.json());
   holidayList = data.items
     .filter(ev => ev.start?.date)
     .map(ev => ev.start.date);
@@ -31,7 +32,6 @@ async function loadCSV() {
       return Object.fromEntries(header.map((h, i) => [h, cols[i]]));
     });
   };
-
   [routes, schedules] = await Promise.all([
     fetch("data/routes.csv").then(r => r.text()).then(parse),
     fetch("data/schedules.csv").then(r => r.text()).then(parse)
@@ -46,155 +46,206 @@ function isHoliday(date) {
 
 function getDayType(date) {
   if (isHoliday(date)) return "休日";
-  const day = date.getDay();
-  if (day === 0) return "休日";
-  if (day === 6) return "土曜";
+  const d = date.getDay();
+  if (d === 0) return "休日";
+  if (d === 6) return "土曜";
   return "平日";
 }
 
 // ---- 時刻変換 ----
 
-function toMinutes(t) {
+function toMin(t) {
   const [h, m] = t.split(":").map(Number);
   return h * 60 + m;
 }
 
-function minutesToTime(m) {
+function toTime(m) {
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 }
 
-function formatDateTimeLocal(date) {
-  const pad = n => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+function fmtDateTimeLocal(date) {
+  const p = n => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${p(date.getMonth()+1)}-${p(date.getDate())}T${p(date.getHours())}:${p(date.getMinutes())}`;
 }
 
-// ---- 系統グループ判定 ----
-// "清61-1" → "清61"、"深夜" → "深夜"
+// ---- 系統グループ："清61-1"→"清61"、"深夜"はそのまま ----
 
-function routeGroup(line) {
+function grp(line) {
   return line.replace(/-\d+$/, "");
 }
 
-// ---- 検索コア：全候補（全時刻）を返す ----
+// ---- 検索コア：系統グループ別に全便リストを構築 ----
 
-function buildAllCandidates(mode, dayType, startMin) {
-  const isLate = startMin >= 23 * 60; // 23:00以降なら深夜便も対象
+function buildGroupCandidates(mode, dayType, startMin) {
+  const isLate = startMin >= 23 * 60;
 
-  return routes
+  const result = {};
+
+  routes
     .filter(r => {
       if (r.mode !== mode) return false;
-      // 深夜便は23:00以降のみ表示
       if (r.line === "深夜" && !isLate) return false;
       return true;
     })
-    .flatMap(r => {
+    .forEach(r => {
       const walkArrive = startMin + Number(r.walk_min);
+      const group = grp(r.line);
 
-      // schedules から該当する全便を取得
-      const list = schedules.filter(s =>
+      const buses = schedules.filter(s =>
         s.route     === r.line      &&
         s.stop      === r.stop      &&
         s.direction === r.direction &&
         s.day_type  === dayType     &&
-        toMinutes(s.depart_time) >= walkArrive
+        toMin(s.depart_time) >= walkArrive
       );
 
-      return list.map(s => {
-        const busDepart = toMinutes(s.depart_time);
-        const arrive    = minutesToTime(busDepart + Number(r.ride_min));
-        return {
+      buses.forEach(s => {
+        const busDepart = toMin(s.depart_time);
+        const candidate = {
           line:   r.line,
-          group:  routeGroup(r.line),
+          group,
           stop:   r.stop,
           getoff: r.getoff,
           depart: s.depart_time,
-          arrive,
+          arrive: toTime(busDepart + Number(r.ride_min)),
           walk:   Number(r.walk_min),
           ride:   Number(r.ride_min),
         };
+        if (!result[group]) result[group] = [];
+        result[group].push(candidate);
       });
-    })
-    // 到着時刻 → 出発時刻 → 系統名 の順でソート
-    .sort((a, b) =>
-      toMinutes(a.arrive) - toMinutes(b.arrive) ||
-      toMinutes(a.depart) - toMinutes(b.depart) ||
-      a.line.localeCompare(b.line)
+    });
+
+  // 各グループを到着→出発の順でソート
+  Object.keys(result).forEach(g => {
+    result[g].sort((a, b) =>
+      toMin(a.arrive) - toMin(b.arrive) || toMin(a.depart) - toMin(b.depart)
     );
+  });
+
+  return result;
 }
 
-// ---- 表示 ----
+// ---- 1グループ分のカードを描画 ----
 
-function showCandidate(c, isFromHome, label) {
-  const results = document.getElementById("results");
-  results.innerHTML = "";
+function renderGroupCard(group, idx, isFromHome) {
+  const list = _groupCandidates[group];
+  const c    = list ? list[idx] : null;
+  const container = document.getElementById(`group-card-${group}`);
+  if (!container) return;
 
   if (!c) {
-    results.innerHTML = "<p>この時間帯に乗れるバスはないよ。</p>";
-    document.getElementById("bubble").innerHTML = "バスが見つからなかったよ…時間帯を変えてみてね。";
-    setCharacterExpression("relax");
-    _updateNavButtons();
+    container.querySelector(".group-body").innerHTML =
+      "<p style='color:#999;font-size:13px;'>この時間以降のバスはないよ</p>";
+    container.querySelector(".group-nav-prev").disabled = true;
+    container.querySelector(".group-nav-next").disabled = true;
     return;
   }
 
-  const detailText = isFromHome ? _homeDetailText(c) : _stationDetailText(c);
-
-  results.innerHTML = `
-    <div class="result">
-      <h3>${c.line}（${c.stop} 乗車）</h3>
-      ${detailText}
-    </div>
+  const detail = isFromHome ? _homeDetail(c) : _stationDetail(c);
+  container.querySelector(".group-body").innerHTML = `
+    <div class="group-line-name">${c.line}</div>
+    ${detail}
   `;
+  container.querySelector(".group-nav-prev").disabled = (idx <= 0);
+  container.querySelector(".group-nav-next").disabled = (idx >= list.length - 1);
+}
 
-  // ルートカード
-  const routeCard = document.getElementById("routeCard");
-  routeCard.style.display = "block";
-  const stationName = isFromHome
-    ? (c.getoff.includes("清瀬") ? "清瀬駅北口" : "新座駅南口")
-    : c.stop;
-  routeCard.innerHTML = isFromHome
-    ? _homeRouteCard(c)
-    : _stationRouteCard(c);
+// ---- 全グループカードを描画 ----
 
-  // ナビボタン更新
-  _updateNavButtons();
+function renderAllGroups(isFromHome) {
+  const resultsEl = document.getElementById("results");
+  resultsEl.innerHTML = "";
 
-  // セリフ
+  const groups = Object.keys(_groupCandidates).sort();
+
+  if (groups.length === 0) {
+    resultsEl.innerHTML = "<p>この時間帯に乗れるバスはないよ。</p>";
+    document.getElementById("bubble").innerHTML = "バスが見つからなかったよ…時間帯を変えてみてね。";
+    setCharacterExpression("relax");
+    return;
+  }
+
+  groups.forEach(group => {
+    const card = document.createElement("div");
+    card.className = "group-card";
+    card.id = `group-card-${group}`;
+    card.innerHTML = `
+      <div class="group-header">
+        <span class="group-title">${group} 系統</span>
+        <div class="group-nav">
+          <button class="group-nav-prev" onclick="shiftGroup('${group}', -1)" disabled>◀ 前</button>
+          <button class="group-nav-next" onclick="shiftGroup('${group}', +1)">次 ▶</button>
+        </div>
+      </div>
+      <div class="group-body"></div>
+    `;
+    resultsEl.appendChild(card);
+    renderGroupCard(group, _groupIndex[group] ?? 0, isFromHome);
+  });
+
+  // キャラのセリフ：最速便（全グループ中で到着最早）を基準
+  const bestList = Object.values(_groupCandidates)
+    .map(list => list[0])
+    .filter(Boolean)
+    .sort((a, b) => toMin(a.arrive) - toMin(b.arrive));
+
+  if (bestList.length > 0) {
+    _speakAbout(bestList[0], isFromHome, "first");
+  }
+}
+
+// ---- グループ内で前/次に移動 ----
+
+function shiftGroup(group, delta) {
+  const list = _groupCandidates[group];
+  if (!list) return;
+  const newIdx = Math.max(0, Math.min(list.length - 1, (_groupIndex[group] ?? 0) + delta));
+  _groupIndex[group] = newIdx;
+
+  const mode = document.querySelector("#modeButtons .active").dataset.mode;
+  renderGroupCard(group, newIdx, mode.startsWith("自宅→"));
+
+  // 移動した系統についてセリフを言う
+  _speakAbout(list[newIdx], mode.startsWith("自宅→"), delta > 0 ? "next" : "prev", group);
+}
+
+// ---- セリフ生成 ----
+
+function _speakAbout(c, isFromHome, label, group) {
   const datetime = document.getElementById("datetime").value;
   const dt       = new Date(datetime);
   const startMin = dt.getHours() * 60 + dt.getMinutes();
-  const diff      = toMinutes(c.depart) - startMin;
+  const diff      = toMin(c.depart) - startMin;
   const leaveDiff = diff - c.walk;
   const walkComment = c.walk >= 10 ? "<br>歩く時間が長いから気をつけてね。" : "";
 
-  let message, expression;
+  const labelText = label === "next" ? `<b>${c.group ?? grp(c.line)}系統、次のバスだよ🚌</b><br>`
+                  : label === "prev" ? `<b>${c.group ?? grp(c.line)}系統、前のバスだよ🚌</b><br>`
+                  : "";
 
-  const labelMap = {
-    next: "次のバスだよ🚌",
-    prev: "前のバスだよ🚌",
-    first: null,
-  };
-  const labelPrefix = labelMap[label] ? `<b>${labelMap[label]}</b><br>` : "";
+  let message, expression;
 
   if (isFromHome) {
     if (leaveDiff <= 5) {
-      message    = `${labelPrefix}急いで！あと<b>${leaveDiff}分</b>で家を出ないと<b>${c.depart}</b>発の<b>${c.line}</b>（<b>${c.stop}</b>）に乗れないよ！<br>着くのは<b>${c.arrive}</b>頃だよ。`;
+      message    = `${labelText}急いで！あと<b>${leaveDiff}分</b>で家を出ないと<b>${c.depart}</b>発の<b>${c.line}</b>（<b>${c.stop}</b>）に乗れないよ！`;
       expression = "hurry";
     } else if (leaveDiff <= 15) {
-      message    = `${labelPrefix}<b>${leaveDiff}分後</b>に家を出れば<b>${c.depart}</b>発の<b>${c.line}</b>（<b>${c.stop}</b>）に間に合うよ。<br>着くのは<b>${c.arrive}</b>頃だよ。`;
+      message    = `${labelText}<b>${leaveDiff}分後</b>に家を出れば<b>${c.depart}</b>発の<b>${c.line}</b>（<b>${c.stop}</b>）に間に合うよ。<br>着くのは<b>${c.arrive}</b>頃だよ。`;
       expression = "normal";
     } else {
-      message    = `${labelPrefix}<b>${leaveDiff}分後</b>に家を出ればOK。<b>${c.depart}</b>発の<b>${c.line}</b>（<b>${c.stop}</b>）に乗れるよ。<br>のんびり準備してね🎵<br>着くのは<b>${c.arrive}</b>頃だよ。`;
+      message    = `${labelText}<b>${leaveDiff}分後</b>に家を出ればOK。<b>${c.depart}</b>発の<b>${c.line}</b>（<b>${c.stop}</b>）に乗れるよ。<br>のんびり準備してね🎵`;
       expression = "relax";
     }
   } else {
     if (diff <= 5) {
-      message    = `${labelPrefix}急いで！<b>${diff}分後</b>に「<b>${c.stop}</b>」から<b>${c.line}</b>が出るよ！<br>家に着くのは<b>${c.arrive}</b>頃だよ。`;
+      message    = `${labelText}急いで！<b>${diff}分後</b>に「<b>${c.stop}</b>」から<b>${c.line}</b>が出るよ！`;
       expression = "hurry";
     } else if (diff <= 15) {
-      message    = `${labelPrefix}<b>${diff}分後</b>に「<b>${c.stop}</b>」から<b>${c.line}</b>が出るよ。<br>家に着くのは<b>${c.arrive}</b>頃だよ。`;
+      message    = `${labelText}<b>${diff}分後</b>に「<b>${c.stop}</b>」から<b>${c.line}</b>が出るよ。<br>家に着くのは<b>${c.arrive}</b>頃だよ。`;
       expression = "normal";
     } else {
-      message    = `${labelPrefix}次の<b>${c.line}</b>は<b>${diff}分後</b>（<b>${c.stop}</b> <b>${c.depart}</b>発）だよ。<br>家に着くのは<b>${c.arrive}</b>頃だよ。`;
+      message    = `${labelText}次の<b>${c.line}</b>は<b>${diff}分後</b>（<b>${c.stop}</b> <b>${c.depart}</b>発）だよ。<br>家に着くのは<b>${c.arrive}</b>頃だよ。`;
       expression = "relax";
     }
   }
@@ -203,11 +254,28 @@ function showCandidate(c, isFromHome, label) {
   setCharacterExpression(expression);
 }
 
-// ---- 前/次ボタン表示制御 ----
+// ---- カード本文 ----
 
-function _updateNavButtons() {
-  document.getElementById("prevBtn").disabled = (_currentIndex <= 0);
-  document.getElementById("nextBtn").disabled = (_currentIndex >= _allCandidates.length - 1);
+function _homeDetail(c) {
+  const leaveTime = toTime(toMin(c.depart) - c.walk);
+  return `
+    <div class="group-detail">
+      <span>🏃 家を出る：<b>${leaveTime}</b></span>
+      <span>🚏 乗車：<b>${c.stop}</b> <b>${c.depart}</b>発</span>
+      <span>🏁 降車：<b>${c.getoff}</b> <b>${c.arrive}</b>着</span>
+    </div>
+  `;
+}
+
+function _stationDetail(c) {
+  const finalArrive = toTime(toMin(c.arrive) + c.walk);
+  return `
+    <div class="group-detail">
+      <span>🚏 乗車：<b>${c.stop}</b> <b>${c.depart}</b>発</span>
+      <span>🏁 降車：<b>${c.getoff}</b> <b>${c.arrive}</b>着</span>
+      <span>🏠 自宅着：<b>${finalArrive}</b></span>
+    </div>
+  `;
 }
 
 // ---- 検索メイン ----
@@ -227,84 +295,19 @@ async function searchBus() {
 
   document.getElementById("dayTypeDisplay").innerText = `この日は「${dayType}」ダイヤです`;
 
-  _allCandidates = buildAllCandidates(mode, dayType, startMin);
+  _groupCandidates = buildGroupCandidates(mode, dayType, startMin);
+  _groupIndex = {};
+  Object.keys(_groupCandidates).forEach(g => { _groupIndex[g] = 0; });
 
-  if (_allCandidates.length === 0) {
-    showCandidate(null, isFromHome, "first");
-    return;
-  }
-
-  // 最初のインデックス：最速（到着が最も早い）便
-  _currentIndex = 0;
-  showCandidate(_allCandidates[0], isFromHome, "first");
-}
-
-// ---- 前/次ボタン ----
-
-function showNextBus() {
-  if (_currentIndex >= _allCandidates.length - 1) return;
-  _currentIndex++;
-  const mode = document.querySelector("#modeButtons .active").dataset.mode;
-  showCandidate(_allCandidates[_currentIndex], mode.startsWith("自宅→"), "next");
-}
-
-function showPrevBus() {
-  if (_currentIndex <= 0) return;
-  _currentIndex--;
-  const mode = document.querySelector("#modeButtons .active").dataset.mode;
-  showCandidate(_allCandidates[_currentIndex], mode.startsWith("自宅→"), "prev");
-}
-
-// ---- カードHTML ----
-
-function _homeDetailText(c) {
-  const leaveTime = minutesToTime(toMinutes(c.depart) - c.walk);
-  return `
-    家を出る時刻：<b>${leaveTime}</b><br>
-    乗車：<b>${c.stop}</b> <b>${c.depart}</b>発（徒歩${c.walk}分）<br>
-    降車：<b>${c.getoff}</b> <b>${c.arrive}</b>着（乗車${c.ride}分）
-  `;
-}
-
-function _stationDetailText(c) {
-  const finalArrive = minutesToTime(toMinutes(c.arrive) + c.walk);
-  return `
-    乗車：<b>${c.stop}</b> <b>${c.depart}</b>発<br>
-    降車：<b>${c.getoff}</b> <b>${c.arrive}</b>着（乗車${c.ride}分）<br>
-    自宅到着：<b>${finalArrive}</b>（徒歩${c.walk}分）
-  `;
-}
-
-function _homeRouteCard(c) {
-  const leaveTime = minutesToTime(toMinutes(c.depart) - c.walk);
-  return `
-    <b>自宅</b> ： ${leaveTime}<br>
-    ↓ 徒歩 ${c.walk}分<br>
-    <b>${c.stop}</b> ： ${c.depart} 発（${c.line}）<br>
-    ↓ 乗車 ${c.ride}分<br>
-    <b>${c.getoff}</b> ： ${c.arrive} 着
-  `;
-}
-
-function _stationRouteCard(c) {
-  const finalArrive = minutesToTime(toMinutes(c.arrive) + c.walk);
-  return `
-    <b>${c.stop}</b> ： ${c.depart} 発（${c.line}）<br>
-    ↓ 乗車 ${c.ride}分<br>
-    <b>${c.getoff}</b> ： ${c.arrive} 着<br>
-    ↓ 徒歩 ${c.walk}分<br>
-    <b>自宅</b> ： ${finalArrive}
-  `;
+  renderAllGroups(isFromHome);
 }
 
 // ---- 初期化 ----
 
 window.addEventListener("load", async () => {
   document.getElementById("bubble").innerHTML = "行き先と日時を選んで検索してね！";
-
   await Promise.all([loadCSV(), loadHolidays()]);
-
-  document.getElementById("datetime").value = formatDateTimeLocal(new Date());
+  document.getElementById("datetime").value = fmtDateTimeLocal(new Date());
 
   document.querySelectorAll("#modeButtons button").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -314,9 +317,6 @@ window.addEventListener("load", async () => {
   });
 
   document.getElementById("nowButton").addEventListener("click", () => {
-    document.getElementById("datetime").value = formatDateTimeLocal(new Date());
+    document.getElementById("datetime").value = fmtDateTimeLocal(new Date());
   });
-
-  document.getElementById("prevBtn").addEventListener("click", showPrevBus);
-  document.getElementById("nextBtn").addEventListener("click", showNextBus);
 });
