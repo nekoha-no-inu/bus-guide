@@ -85,7 +85,6 @@ async function searchBus() {
   document.getElementById("dayTypeDisplay").innerText = `この日は「${dayType}」ダイヤです`;
 
   const isFromHome = mode.startsWith("自宅→");
-  const isToHome   = mode.endsWith("→自宅");
 
   // 各ルートで乗れる最初のバスを探す
   const candidates = routes
@@ -103,26 +102,37 @@ async function searchBus() {
 
       if (list.length === 0) return [];
 
-      const nextBus  = list[0];
+      const nextBus   = list[0];
       const busDepart = toMinutes(nextBus.depart_time);
-      const arrive   = busDepart + Number(r.ride_min);
-
-      const pairMode = isFromHome ? (p => p.mode.endsWith("→自宅")) : (p => p.mode.startsWith("自宅→"));
-      const pair     = routes.find(r2 => r2.line === r.line && pairMode(r2));
-      const getoffStop = pair?.stop ?? "";
+      const arrive    = busDepart + Number(r.ride_min);
 
       return [{
-        line: r.line, stop: r.stop, getoff: getoffStop,
-        depart: nextBus.depart_time, arrive: minutesToTime(arrive),
-        walk: r.walk_min, ride: r.ride_min
+        line:   r.line,
+        stop:   r.stop,
+        getoff: r.getoff,          // routes.csv から直接取得
+        depart: nextBus.depart_time,
+        arrive: minutesToTime(arrive),
+        walk:   r.walk_min,
+        ride:   r.ride_min
       }];
     });
 
-  candidates.sort((a, b) => toMinutes(a.arrive) - toMinutes(b.arrive));
+  // 到着時刻の早い順にソート。同着なら出発時刻の早い順
+  candidates.sort((a, b) =>
+    toMinutes(a.arrive) - toMinutes(b.arrive) ||
+    toMinutes(a.depart) - toMinutes(b.depart)
+  );
 
   // ---- 結果カード ----
   const results = document.getElementById("results");
   results.innerHTML = "";
+
+  if (candidates.length === 0) {
+    results.innerHTML = "<p>この時間帯に乗れるバスは見つからなかったよ。</p>";
+    document.getElementById("bubble").innerHTML = "バスが見つからなかったよ…時間帯を変えてみてね。";
+    setCharacterExpression("relax");
+    return;
+  }
 
   candidates.forEach((c, i) => {
     const detailText = isFromHome
@@ -131,25 +141,23 @@ async function searchBus() {
 
     results.innerHTML += `
       <div class="result">
-        <h3>${i === 0 ? "【最速】" : ""}${c.line}（${c.stop}）</h3>
+        <h3>${i === 0 ? "【最速】" : ""}${c.line}（${c.stop} 乗車）</h3>
         ${detailText}
       </div>
     `;
   });
 
-  if (candidates.length === 0) return;
-
-  // ---- ルートカード ----
-  const best        = candidates[0];
-  const routeCard   = document.getElementById("routeCard");
+  // ---- ルートカード（最速便） ----
+  const best      = candidates[0];
+  const routeCard = document.getElementById("routeCard");
   routeCard.style.display = "block";
 
-  const stationName = mode.includes("清瀬駅") ? "清瀬駅" : "新座駅";
+  const stationName = mode.includes("清瀬駅") ? "清瀬駅北口" : "新座駅南口";
   routeCard.innerHTML = isFromHome
     ? _homeRouteCard(best, stationName)
     : _stationRouteCard(best, stationName);
 
-  // ---- セリフ ----
+  // ---- キャラクターセリフ ----
   const departMin = toMinutes(best.depart);
   const diff      = departMin - startMin;
   const leaveDiff = diff - Number(best.walk);
@@ -158,22 +166,25 @@ async function searchBus() {
   let message, expression;
 
   if (isFromHome) {
-    if (leaveDiff <= 10) {
-      message    = `あと<b>${leaveDiff}分</b>で家を出て、<b>${diff}分後</b>に「<b>${best.stop}</b>」から出る<b>${best.line}</b>系統に乗ってね。<br>急げば間に合うよ！<br>駅に着くのは<b>${best.arrive}</b>頃だよ。`;
+    if (leaveDiff <= 5) {
+      message    = `急いで！あと<b>${leaveDiff}分</b>で家を出ないと「<b>${best.stop}</b>」<b>${best.depart}</b>発の<b>${best.line}</b>に乗れないよ！<br>駅に着くのは<b>${best.arrive}</b>頃だよ。`;
       expression = "hurry";
-    } else if (leaveDiff <= 20) {
-      message    = `<b>${leaveDiff}分後</b>に家を出れば、<b>${diff}分後</b>に「<b>${best.stop}</b>」から出る<b>${best.line}</b>系統に余裕で間に合うよ。<br>ちょうどいいタイミングだよ。<br>駅に着くのは<b>${best.arrive}</b>頃だよ。`;
+    } else if (leaveDiff <= 15) {
+      message    = `<b>${leaveDiff}分後</b>に家を出れば、<b>${best.depart}</b>発の<b>${best.line}</b>（<b>${best.stop}</b>）に間に合うよ。<br>駅に着くのは<b>${best.arrive}</b>頃だよ。`;
       expression = "normal";
     } else {
-      message    = `<b>${leaveDiff}分後</b>に家を出れば、<b>${diff}分後</b>に「<b>${best.stop}</b>」から出る<b>${best.line}</b>系統に間に合うよ。<br>のんびり準備して大丈夫だよ。<br>駅に着くのは<b>${best.arrive}</b>頃だよ。`;
+      message    = `<b>${leaveDiff}分後</b>に家を出れば大丈夫。<b>${best.depart}</b>発の<b>${best.line}</b>（<b>${best.stop}</b>）に乗れるよ。<br>のんびり準備してね。<br>駅に着くのは<b>${best.arrive}</b>頃だよ。`;
       expression = "relax";
     }
   } else {
-    if (diff <= 10) {
-      message    = `<b>${diff}分後</b>に「<b>${best.stop}</b>」から出る<b>${best.line}</b>系統に乗れば、早く家に帰れるよ。<br>ちょうどいいタイミングだよ！<br>家に着くのは<b>${best.arrive}</b>頃だよ。`;
+    if (diff <= 5) {
+      message    = `急いで！<b>${diff}分後</b>に「<b>${best.stop}</b>」から<b>${best.line}</b>が出るよ！<br>家に着くのは<b>${best.arrive}</b>頃だよ。`;
+      expression = "hurry";
+    } else if (diff <= 15) {
+      message    = `<b>${diff}分後</b>に「<b>${best.stop}</b>」から<b>${best.line}</b>が出るよ。ちょうどいいタイミングだね。<br>家に着くのは<b>${best.arrive}</b>頃だよ。`;
       expression = "normal";
     } else {
-      message    = `<b>${diff}分後</b>に「<b>${best.stop}</b>」から出る<b>${best.line}</b>系統が一番早いよ。<br>ちょっと待ち時間が長いね…<br>家に着くのは<b>${best.arrive}</b>頃だよ。`;
+      message    = `次の<b>${best.line}</b>は<b>${diff}分後</b>（<b>${best.stop}</b> <b>${best.depart}</b>発）だよ。<br>ちょっと待ち時間があるね。<br>家に着くのは<b>${best.arrive}</b>頃だよ。`;
       expression = "relax";
     }
   }
@@ -186,22 +197,42 @@ async function searchBus() {
 
 function _homeDetailText(c) {
   const leaveTime = minutesToTime(toMinutes(c.depart) - Number(c.walk));
-  return `家を出る時刻：<b>${leaveTime}</b><br>バス発車時刻：<b>${c.depart}</b><br>駅到着時刻：<b>${c.arrive}</b><br>徒歩 ${c.walk}分 + 乗車 ${c.ride}分`;
+  return `
+    家を出る時刻：<b>${leaveTime}</b><br>
+    乗車：<b>${c.stop}</b> <b>${c.depart}</b>発（徒歩${c.walk}分）<br>
+    降車：<b>${c.getoff}</b> <b>${c.arrive}</b>着（乗車${c.ride}分）
+  `;
 }
 
 function _stationDetailText(c) {
   const finalArrive = minutesToTime(toMinutes(c.arrive) + Number(c.walk));
-  return `バス到着時刻：<b>${c.arrive}</b>（${c.getoff}）<br>自宅到着時刻：<b>${finalArrive}</b><br>乗車 ${c.ride}分 + 徒歩 ${c.walk}分`;
+  return `
+    乗車：<b>${c.stop}</b> <b>${c.depart}</b>発<br>
+    降車：<b>${c.getoff}</b> <b>${c.arrive}</b>着（乗車${c.ride}分）<br>
+    自宅到着：<b>${finalArrive}</b>（徒歩${c.walk}分）
+  `;
 }
 
 function _homeRouteCard(best, stationName) {
   const leaveTime = minutesToTime(toMinutes(best.depart) - Number(best.walk));
-  return `<b>自宅</b> ： ${leaveTime}<br>↓ 徒歩 ${best.walk}分<br><b>${best.stop}</b> ： ${best.depart}<br>↓ 乗車 ${best.ride}分<br><b>${stationName}</b> ： ${best.arrive}`;
+  return `
+    <b>自宅</b> ： ${leaveTime}<br>
+    ↓ 徒歩 ${best.walk}分<br>
+    <b>${best.stop}</b> ： ${best.depart} 発（${best.line}）<br>
+    ↓ 乗車 ${best.ride}分<br>
+    <b>${best.getoff}</b> ： ${best.arrive} 着
+  `;
 }
 
 function _stationRouteCard(best, stationName) {
   const finalArrive = minutesToTime(toMinutes(best.arrive) + Number(best.walk));
-  return `<b>${stationName}</b> ： ${best.depart}<br>↓ 乗車 ${best.ride}分<br><b>${best.getoff}</b> ： ${best.arrive}<br>↓ 徒歩 ${best.walk}分<br><b>自宅</b> ： ${finalArrive}`;
+  return `
+    <b>${best.stop}</b> ： ${best.depart} 発（${best.line}）<br>
+    ↓ 乗車 ${best.ride}分<br>
+    <b>${best.getoff}</b> ： ${best.arrive} 着<br>
+    ↓ 徒歩 ${best.walk}分<br>
+    <b>自宅</b> ： ${finalArrive}
+  `;
 }
 
 // ---- 初期化 ----
