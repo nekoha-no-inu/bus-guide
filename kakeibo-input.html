@@ -102,7 +102,13 @@ async function submitRecord() {
 
   try {
     await addRecord({ type, date, category: cat, subcategory: subcat, description: desc, amount, person });
-    getMessage("kakeibo","saved",{description:desc,amount:amount.toLocaleString()}).then(m=>{document.getElementById("bubble").innerHTML=m.text;setCharacterExpression(m.expression)});
+    getMessage("kakeibo","saved", null, {
+      description: desc,
+      amount: amount.toLocaleString()
+    }).then(m=>{
+      document.getElementById("bubble").innerHTML = m.text;
+      setCharacterExpression(m.expression);
+    });
     document.getElementById("f-description").value = "";
     document.getElementById("f-amount").value      = "";
     document.getElementById("f-date").value        = todayStr();
