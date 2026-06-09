@@ -82,15 +82,17 @@ function buildRouteButtons() {
 
 // ---- 時刻表表示 ----
 
-function loadTimetable(stop, direction) {
+async function loadTimetable(stop, direction) {
   const dateStr = document.getElementById("dateInput").value;
   if (!dateStr) {
-    alert("日付を選んでね。");
+    const msg = await getMessage("timetable", "no_date");
+    setCharacterSpeech(msg.text, msg.expression);
     return;
   }
 
-  const dayType = getDayType(dateStr);
-  const result  = document.getElementById("result");
+  const dayType   = getDayType(dateStr);
+  const dirLabel  = direction === "清瀬駅方向" ? "清瀬駅行き" : "新座駅行き";
+  const result    = document.getElementById("result");
   result.innerHTML = "";
 
   // 該当するすべての系統・時刻を収集してグループ化
@@ -106,18 +108,17 @@ function loadTimetable(stop, direction) {
     });
 
   document.getElementById("timetableHeader").innerHTML =
-    `<b>${stop} → （${direction === "清瀬駅方向" ? "清瀬駅行き" : "新座駅行き"}）</b>　${dayType}ダイヤ`;
+    `<b>${stop} → （${dirLabel}）</b>　${dayType}ダイヤ`;
 
   if (Object.keys(groupMap).length === 0) {
-    result.innerHTML = "<p>この条件での時刻表はないよ。</p>";
-    document.getElementById("bubble").innerHTML = "バスが見つからなかったよ…日付を確認してね。";
-    setCharacterExpression("relax");
+    result.innerHTML = "";
+    const msg = await getMessage("timetable", "no_result");
+    setCharacterSpeech(msg.text, msg.expression);
     return;
   }
 
-  document.getElementById("bubble").innerHTML =
-    `${stop}（${direction === "清瀬駅方向" ? "清瀬駅行き" : "新座駅行き"}）<br>${dayType}ダイヤの時刻表だよ📋`;
-  setCharacterExpression("normal");
+  const showMsg = await getMessage("timetable", "show", { stop, direction: dirLabel, dayType });
+  setCharacterSpeech(showMsg.text, showMsg.expression);
 
   Object.keys(groupMap).sort().forEach(grp => {
     const lines    = groupMap[grp];

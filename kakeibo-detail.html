@@ -128,12 +128,12 @@ async function loadList() {
 
     if (records.length === 0) {
       list.innerHTML = "<p style='color:#999;font-size:14px;text-align:center;margin:20px 0;'>該当するデータはないよ。</p>";
-      document.getElementById("bubble").innerHTML = "この条件のデータはないみたい。";
+      document.getElementById("bubble").innerHTML = (await getMessage("kakeibo","detail_empty")).text;
       setCharacterExpression("relax");
       return;
     }
 
-    document.getElementById("bubble").innerHTML = `${records.length}件のデータだよ📋`;
+    document.getElementById("bubble").innerHTML = (await getMessage("kakeibo","detail_show",{count:records.length})).text;
     setCharacterExpression("normal");
 
     records.forEach(r => {
@@ -203,11 +203,11 @@ async function saveEdit() {
   try {
     await updateRecord(editingFirestoreId, data);
     closeModal();
-    document.getElementById("bubble").innerHTML = "保存したよ！";
+    document.getElementById("bubble").innerHTML = (await getMessage("kakeibo","edit_saved")).text;
     setCharacterExpression("relax");
     loadList();
   } catch(e) {
-    document.getElementById("bubble").innerHTML = "保存に失敗したよ…";
+    document.getElementById("bubble").innerHTML = (await getMessage("kakeibo","edit_error")).text;
     setCharacterExpression("hurry");
     console.error(e);
   }
@@ -219,11 +219,11 @@ async function confirmDelete() {
   try {
     await deleteRecordById(editingFirestoreId);
     closeModal();
-    document.getElementById("bubble").innerHTML = "削除したよ。";
+    document.getElementById("bubble").innerHTML = (await getMessage("kakeibo","edit_deleted")).text;
     setCharacterExpression("normal");
     loadList();
   } catch(e) {
-    document.getElementById("bubble").innerHTML = "削除に失敗したよ…";
+    document.getElementById("bubble").innerHTML = (await getMessage("kakeibo","edit_error")).text;
     setCharacterExpression("hurry");
     console.error(e);
   }

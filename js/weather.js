@@ -16,13 +16,6 @@ const WEATHER_LABELS = {
   thunder: "雷雨"
 };
 
-const LOADING_LINES = [
-  "…ちょっと待って。今、天気見てるから…",
-  "読み込み中…。眠くなる…",
-  "…データ取ってくるね。少しだけ待って…",
-  "うーん…。通信してる…。"
-];
-
 let currentCity = "kiyose";
 
 // ---- 都市切替 ----
@@ -47,7 +40,9 @@ async function getWeatherData() {
 
     return { cityName: name, current: data.current_weather, daily: data.daily };
   } catch (e) {
-    document.getElementById("bubble").innerHTML = "…ネットワークが不安定みたい。もう一回読み込んでみて…。";
+    const msg = await getMessage("weather", "error");
+    document.getElementById("bubble").innerHTML = msg.text;
+    setCharacterExpression(msg.expression);
     throw e;
   }
 }
@@ -65,7 +60,8 @@ function formatDate(dateStr) {
 // ---- メイン処理 ----
 
 async function loadWeather() {
-  document.getElementById("bubble").innerHTML = LOADING_LINES[Math.floor(Math.random() * LOADING_LINES.length)];
+  const loadingMsg = await getMessage("weather", "loading");
+  document.getElementById("bubble").innerHTML = loadingMsg.text;
 
   const data = await getWeatherData();
 

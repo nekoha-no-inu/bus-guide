@@ -82,6 +82,8 @@ async function render() {
   document.getElementById("breakdown").innerHTML = "";
 
   const records = await fetchRecords(currentYM);
+  const [, m]   = currentYM.split("-");
+  const month   = parseInt(m);
 
   const income  = records.filter(r => r.type === "収入").reduce((s,r) => s + Number(r.amount), 0);
   const expense = records.filter(r => r.type === "支出").reduce((s,r) => s + Number(r.amount), 0);
@@ -104,7 +106,7 @@ async function render() {
   bd.innerHTML = `<h3 style="margin:12px 0 6px;font-size:15px;">小項目別の支出</h3>`;
 
   if (Object.keys(bySubcat).length === 0) {
-    bd.innerHTML += `<p style="color:#999;font-size:14px;">この月のデータはないよ。</p>`;
+    bd.innerHTML += `<p style="color:#999;font-size:14px;"></p>`;
   } else {
     const sec = document.createElement("div");
     sec.className = "sub-section";
@@ -116,18 +118,17 @@ async function render() {
     bd.appendChild(sec);
   }
 
-  // キャラセリフ
-  const [,m] = currentYM.split("-");
+  // キャラセリフ（JSON）
+  let msg;
   if (expense === 0 && income === 0) {
-    document.getElementById("bubble").innerHTML = "この月のデータはまだないよ。";
-    setCharacterExpression("normal");
+    msg = await getMessage("kakeibo", "no_data", { month });
   } else if (balance >= 0) {
-    document.getElementById("bubble").innerHTML = `${parseInt(m)}月は<b>${fmt(balance)}</b>のプラスだよ！よかったね🎉`;
-    setCharacterExpression("relax");
+    msg = await getMessage("kakeibo", "balance_plus", { month, balance: fmt(balance) });
   } else {
-    document.getElementById("bubble").innerHTML = `${parseInt(m)}月は<b>${fmt(Math.abs(balance))}</b>の赤字だよ…気をつけてね😢`;
-    setCharacterExpression("hurry");
+    msg = await getMessage("kakeibo", "balance_minus", { month, balance: fmt(Math.abs(balance)) });
   }
+  document.getElementById("bubble").innerHTML = msg.text;
+  setCharacterExpression(msg.expression);
 }
 
 window.addEventListener("load", async () => {

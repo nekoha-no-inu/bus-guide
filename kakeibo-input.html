@@ -75,14 +75,12 @@ function onTypeChange() {
   if (type === "収入") {
     catSel.innerHTML = `<option value="給与">給与</option><option value="臨時収入">臨時収入</option>`;
     subBlk.style.display = "none";
-    document.getElementById("bubble").innerHTML = "収入を記録するね！";
-    setCharacterExpression("relax");
+    getMessage("kakeibo","input_income").then(m=>{document.getElementById("bubble").innerHTML=m.text;setCharacterExpression(m.expression)});
   } else {
     catSel.innerHTML = ["固定費","変動費","臨時出費","旅費"]
       .map(v => `<option value="${v}">${v}</option>`).join("");
     subBlk.style.display = "block";
-    document.getElementById("bubble").innerHTML = "支出を記録するね。";
-    setCharacterExpression("normal");
+    getMessage("kakeibo","input_expense").then(m=>{document.getElementById("bubble").innerHTML=m.text;setCharacterExpression(m.expression)});
   }
 }
 
@@ -96,24 +94,20 @@ async function submitRecord() {
   const person = document.getElementById("f-person").value;
 
   if (!date || !desc || !amount || isNaN(amount)) {
-    document.getElementById("bubble").innerHTML = "日付・内容・金額は必ず入力してね！";
-    setCharacterExpression("hurry");
+    getMessage("kakeibo","empty_input").then(m=>{document.getElementById("bubble").innerHTML=m.text;setCharacterExpression(m.expression)});
     return;
   }
 
-  document.getElementById("bubble").innerHTML = "保存中…";
-  setCharacterExpression("normal");
+  
 
   try {
     await addRecord({ type, date, category: cat, subcategory: subcat, description: desc, amount, person });
-    document.getElementById("bubble").innerHTML = `${desc}（${amount.toLocaleString()}円）を記録したよ！`;
-    setCharacterExpression("relax");
+    getMessage("kakeibo","saved",{description:desc,amount:amount.toLocaleString()}).then(m=>{document.getElementById("bubble").innerHTML=m.text;setCharacterExpression(m.expression)});
     document.getElementById("f-description").value = "";
     document.getElementById("f-amount").value      = "";
     document.getElementById("f-date").value        = todayStr();
   } catch(e) {
-    document.getElementById("bubble").innerHTML = "保存に失敗したよ…もう一度試してね。";
-    setCharacterExpression("hurry");
+    getMessage("kakeibo","save_error").then(m=>{document.getElementById("bubble").innerHTML=m.text;setCharacterExpression(m.expression)});
     console.error(e);
   }
 }
