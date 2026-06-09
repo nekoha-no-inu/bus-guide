@@ -3,35 +3,23 @@
     "morning": {
       "sunny": [
         {
-          "text": "…おはよう。晴れてるけど、まぶしくて目がしょぼしょぼする…。",
+          "text": "…おはよう。今日は晴れてるね。まあ、悪くない天気かも。",
           "expression": "normal"
         },
         {
-          "text": "朝日が強いね…。んー…もう少し寝てたい気分…。",
+          "text": "朝日がまぶしい…。ちょっと眠いけど、行かなきゃね。",
           "expression": "relax"
-        },
-        {
-          "text": "今日も晴れか…。外はあったかそうだけど、ぼくはまだ布団のほうが好き…。",
-          "expression": "normal"
         }
       ],
       "cloudy": [
         {
-          "text": "おはよう…。曇ってると静かで落ち着くね…ぼくは好きだよ。",
+          "text": "おはよう…。曇ってるけど、静かでいいかもね。",
           "expression": "relax"
-        },
-        {
-          "text": "ん…曇りか…。こういう日はゆっくりしたくなるよね…。",
-          "expression": "normal"
         }
       ],
       "rain": [
         {
-          "text": "雨だよ…。濡れるのは苦手だけど、音はちょっと好き…。",
-          "expression": "sad"
-        },
-        {
-          "text": "外、雨だね…。足元、気をつけてね…ほんとに。",
+          "text": "雨か…。濡れるのは苦手だけど、音は落ち着くよね。",
           "expression": "sad"
         }
       ]
@@ -39,31 +27,19 @@
     "noon": {
       "sunny": [
         {
-          "text": "…こんにちは。外、明るいね。ちょっと眩しいけど…まあ悪くないよ。",
+          "text": "…こんにちは。外、明るいね。ちょっと眩しいけど。",
           "expression": "normal"
-        },
-        {
-          "text": "お昼かぁ…。晴れてると眠くなるの、ぼくだけ…？",
-          "expression": "relax"
         }
       ],
       "cloudy": [
         {
-          "text": "こんにちは…。曇ってると、なんか落ち着くね…。",
+          "text": "こんにちは…。曇ってると、なんか落ち着くね。",
           "expression": "relax"
-        },
-        {
-          "text": "ん…外は静かだね。こういう空、嫌いじゃないよ。",
-          "expression": "normal"
         }
       ],
       "rain": [
         {
-          "text": "雨、まだ続いてるね…。無理しないでいこ…。",
-          "expression": "sad"
-        },
-        {
-          "text": "外、濡れてるよ…。帰るなら気をつけてね。",
+          "text": "雨、まだ続いてるね…。無理しないでいこ。",
           "expression": "sad"
         }
       ]
@@ -73,81 +49,53 @@
         {
           "text": "こんばんは…。夜風が気持ちいいね。ちょっと眠くなる…。",
           "expression": "relax"
-        },
-        {
-          "text": "今日も一日おつかれ…。星、見えるかな…？",
-          "expression": "normal"
         }
       ],
       "cloudy": [
         {
           "text": "こんばんは。曇ってる夜って、静かで好きだよ…。",
           "expression": "normal"
-        },
-        {
-          "text": "雲が多いね…。でも、こういう夜も悪くないよ。",
-          "expression": "relax"
         }
       ],
       "rain": [
         {
           "text": "雨の夜だね…。帰り道、気をつけてね。",
           "expression": "sad"
-        },
-        {
-          "text": "外、冷たそう…。あったかくして休んでね。",
-          "expression": "sad"
         }
       ]
     },
     "homeTalk": [
       {
-        "text": "今日も…のんびりしていこ。無理しなくていいよ…。",
+        "text": "今日もゆっくりしていこうね…。",
         "expression": "relax"
       },
       {
-        "text": "眠い…。ちょっとだけ休んでてもいい…？",
+        "text": "眠い…。",
         "expression": "normal"
       },
       {
-        "text": "ん…どうしたの？ ぼくでよければ聞くよ…。",
+        "text": "なんか用…？ ううん、別にいいけど…。",
         "expression": "normal"
-      },
-      {
-        "text": "ふぁ…なんか、ぼーっとする日だね…。",
-        "expression": "relax"
-      },
-      {
-        "text": "今日は静かだね…。こういう時間、嫌いじゃないよ。",
-        "expression": "relax"
       }
     ],
     "tapReactions": {
       "tickle": [
         {
-          "text": "ちょ、ちょっと…！ くすぐったいってば…！",
+          "text": "ちょ、ちょっと…！ くすぐったいよ…！",
           "expression": "surprised"
         },
         {
-          "text": "やめ…っ…ふふ…っ…！ ほんとに…もう…！",
+          "text": "やめて…っ…！ ふふ…っ…！",
           "expression": "relax"
-        },
-        {
-          "text": "あー…もう…くすぐったいの苦手なんだよ…？",
-          "expression": "normal"
         }
       ],
       "blush": [
         {
-          "text": "そんなに触られると…ちょっと…恥ずかしいんだけど…",
+          "text": "そんなに触られると…ちょっと恥ずかしいんだけど…",
           "expression": "blush"
         },
         {
-          "text": "べ、別に…嬉しくなんて…ないよ…？ ほんとだよ…？",
-          "expression": "blush"
-        },
-        {
-          "text": "……やめてよ…。顔、赤くなる…",
+          "text": "……べ、別に嬉しくなんか…ないよ…？",
           "expression": "blush"
         }
       ],
@@ -159,135 +107,122 @@
         {
           "text": "しつこい…！ もう知らない…！",
           "expression": "angry"
-        },
-        {
-          "text": "やめてって言ったのに…。むぅ…",
-          "expression": "angry"
         }
       ],
       "rare": [
         {
-          "text": "……そんなに構ってくれるの、嫌じゃないけど…ね。",
+          "text": "……そんなに構ってくれるの、嫌いじゃないけどね。",
           "expression": "blush"
         },
         {
-          "text": "もう…。ほんとに、しょうがない人だね…。",
-          "expression": "relax"
-        },
-        {
-          "text": "……ちょっとだけなら、触っててもいいよ…？",
+          "text": "……もう。ほんとに、しょうがない人だね。",
           "expression": "relax"
         }
       ]
     }
   },
-
   "transfer": {
     "fromHome": {
       "hurry": [
         {
-          "text": "…あと{{leaveDiff}}分で家を出ないと{{line}}（{{stop}} {{depart}}発）に間に合わないよ…！ 急ご…？<br>駅には{{arrive}}頃だと思う…。",
+          "text": "…あと{{leaveDiff}}分で家を出ないと{{line}}（{{stop}} {{depart}}発）に乗れないよ！急いで！<br>駅に着くのは{{arrive}}頃だよ。",
           "expression": "hurry"
         }
       ],
       "normal": [
         {
-          "text": "{{leaveDiff}}分後に家を出れば{{line}}（{{stop}} {{depart}}発）に間に合うよ…。<br>駅には{{arrive}}頃に着くと思う…。",
+          "text": "{{leaveDiff}}分後に家を出れば{{line}}（{{stop}} {{depart}}発）に間に合うよ。<br>駅に着くのは{{arrive}}頃だよ。",
           "expression": "normal"
         },
         {
-          "text": "あと{{leaveDiff}}分で出れば大丈夫だよ…。{{stop}}から{{line}}に乗ってね。<br>駅には{{arrive}}頃かな…。",
+          "text": "あと{{leaveDiff}}分で出発すれば大丈夫。{{stop}}から{{line}}に乗ってね。<br>駅には{{arrive}}頃に着くよ。",
           "expression": "normal"
         }
       ],
       "relax": [
         {
-          "text": "{{leaveDiff}}分後でいいよ…。まだ余裕あるし、のんびり準備してね。<br>駅には{{arrive}}頃だと思うよ…。",
+          "text": "{{leaveDiff}}分後でいいよ…{{line}}に余裕で乗れるから、のんびり準備してね。<br>駅に着くのは{{arrive}}頃かな。",
           "expression": "relax"
         },
         {
-          "text": "まだ{{leaveDiff}}分あるよ…。ゆっくりで大丈夫。{{stop}}から{{line}}に乗ればいいし…。<br>駅には{{arrive}}頃に着くよ…。",
+          "text": "まだ{{leaveDiff}}分あるよ。ゆっくりしてて…{{stop}}から{{line}}に乗ればいいから。<br>駅には{{arrive}}頃に着くよ。",
           "expression": "relax"
         }
       ],
       "next": [
         {
-          "text": "次のバスだよ🚌<br>{{leaveDiff}}分後に家を出れば{{line}}（{{stop}} {{depart}}発）に乗れるよ…。<br>駅には{{arrive}}頃だと思う…。",
+          "text": "次のバスだよ🚌<br>{{leaveDiff}}分後に家を出れば{{line}}（{{stop}} {{depart}}発）に乗れるよ。<br>駅に着くのは{{arrive}}頃だよ。",
           "expression": "normal"
         }
       ],
       "prev": [
         {
-          "text": "前のバスだよ🚌<br>{{leaveDiff}}分後に家を出れば{{line}}（{{stop}} {{depart}}発）に乗れるよ…。<br>駅には{{arrive}}頃だと思う…。",
+          "text": "前のバスだよ🚌<br>{{leaveDiff}}分後に家を出れば{{line}}（{{stop}} {{depart}}発）に乗れるよ。<br>駅に着くのは{{arrive}}頃だよ。",
           "expression": "normal"
         }
       ]
     },
-
     "toHome": {
       "hurry": [
         {
-          "text": "急いで…！ {{diff}}分後に「{{stop}}」から{{line}}が出ちゃうよ…！<br>家に着くのは{{homeArrive}}頃だと思う…。",
+          "text": "急いで！{{diff}}分後に「{{stop}}」から{{line}}が出るよ！<br>家に着くのは{{homeArrive}}頃だよ。",
           "expression": "hurry"
         }
       ],
       "normal": [
         {
-          "text": "{{diff}}分後に「{{stop}}」から{{line}}が出るよ…。ちょうどいいタイミングだね…。<br>家には{{homeArrive}}頃に着くよ…。",
+          "text": "{{diff}}分後に「{{stop}}」から{{line}}が出るよ。ちょうどいいタイミングだね。<br>家に着くのは{{homeArrive}}頃だよ。",
           "expression": "normal"
         },
         {
-          "text": "{{stop}}から{{diff}}分後に{{line}}が出るよ…。乗り遅れないようにね…。<br>家には{{homeArrive}}頃に着くと思う…。",
+          "text": "{{stop}}から{{diff}}分後に{{line}}が出るよ…。乗り遅れないようにね。<br>家には{{homeArrive}}頃に着くよ。",
           "expression": "normal"
         }
       ],
       "relax": [
         {
-          "text": "次の{{line}}は{{diff}}分後（{{stop}} {{depart}}発）だよ…。ちょっと待ち時間あるね…。<br>家には{{homeArrive}}頃に着くよ…。",
+          "text": "次の{{line}}は{{diff}}分後（{{stop}} {{depart}}発）だよ。ちょっと待ち時間があるね…。<br>家に着くのは{{homeArrive}}頃だよ。",
           "expression": "relax"
         },
         {
-          "text": "{{diff}}分後に{{stop}}から{{line}}が出るよ…。まだ時間あるし、のんびりしてて…。<br>家には{{homeArrive}}頃かな…。",
+          "text": "{{diff}}分後に{{stop}}から{{line}}が出るよ…。まだ時間あるからのんびりしてて。<br>家には{{homeArrive}}頃に着くよ。",
           "expression": "relax"
         }
       ],
       "next": [
         {
-          "text": "次のバスだよ🚌<br>{{stop}} {{depart}}発の{{line}}に乗ってね…。<br>家には{{homeArrive}}頃に着くよ…。",
+          "text": "次のバスだよ🚌<br>{{stop}} {{depart}}発の{{line}}に乗ってね。<br>家に着くのは{{homeArrive}}頃だよ。",
           "expression": "normal"
         }
       ],
       "prev": [
         {
-          "text": "前のバスだよ🚌<br>{{stop}} {{depart}}発の{{line}}に乗ってね…。<br>家には{{homeArrive}}頃に着くと思う…。",
+          "text": "前のバスだよ🚌<br>{{stop}} {{depart}}発の{{line}}に乗ってね。<br>家に着くのは{{homeArrive}}頃だよ。",
           "expression": "normal"
         }
       ]
     },
-
     "noBus": [
       {
-        "text": "…ごめん、この時間帯はバスが見つからなかったよ…。時間を変えてみてね…。",
+        "text": "…ごめん、この時間帯はバスが見つからなかったよ。時間を変えてみてね。",
         "expression": "relax"
       },
       {
-        "text": "今日はこの時間のバス、ないみたいだね…。別の時間を試してみて…。",
+        "text": "今日はこの時間のバス、ないみたいだね…。別の時間を試してみて。",
         "expression": "normal"
       }
     ],
-
     "walkLong": [
       {
-        "text": "歩く時間がちょっと長いから…気をつけてね…。",
+        "text": "歩く時間がちょっと長いから、気をつけてね…。",
         "expression": "normal"
       }
     ]
   },
-
   "timetable": {
     "noBus": [
       {
-        "text": "…その日のバス、見つからなかったよ…。別の日付とか方向を試してみてね…。",
+        "text": "…その日のバス、見つからなかったよ。別の日付とか方向を試してみてね。",
         "expression": "normal"
       },
       {
@@ -295,13 +230,13 @@
         "expression": "relax"
       },
       {
-        "text": "ごめん…この日はバスが見つからなかったよ…。",
+        "text": "ごめん…この日はバスが見つからなかったよ。",
         "expression": "sad"
       }
     ],
     "found": [
       {
-        "text": "{{line}} の時刻表だよ…。<b>{{count}}</b> 本あったみたい…。",
+        "text": "{{line}} の時刻表だよ…。<b>{{count}}</b> 本あったみたい。",
         "expression": "normal"
       },
       {
@@ -315,17 +250,17 @@
     ],
     "no_date": [
       {
-        "text": "日付を選んでね…。",
+        "text": "日付を選んでね。",
         "expression": "hurry"
       }
     ],
     "no_result": [
       {
-        "text": "この条件での時刻表はないよ…。日付や方向を確認してね…。",
+        "text": "この条件での時刻表はないよ。日付や方向を確認してね。",
         "expression": "relax"
       },
       {
-        "text": "バスが見つからなかったよ…。日付を確認してね…。",
+        "text": "バスが見つからなかったよ…日付を確認してね。",
         "expression": "relax"
       }
     ],
@@ -340,162 +275,99 @@
     "today": {
       "sunny": [
         {
-          "text": "晴れだよ…。外は明るいけど、ぼくはちょっと眠くなる天気…。",
+          "text": "晴れだね…。まあ、悪くないよ。",
           "expression": "normal"
-        },
-        {
-          "text": "今日は晴れみたい…。あったかいのは好きだけど、日差しはちょっと苦手…。",
-          "expression": "relax"
         }
       ],
       "cloudy": [
         {
-          "text": "曇りだよ…。静かで落ち着く天気だね…。",
+          "text": "曇り…。静かでいいかもね。",
           "expression": "relax"
-        },
-        {
-          "text": "今日は曇りみたい…。こういう空、嫌いじゃないよ…。",
-          "expression": "normal"
         }
       ],
       "rain": [
         {
-          "text": "雨だよ…。足元、気をつけてね…ほんとに。",
-          "expression": "sad"
-        },
-        {
-          "text": "外、濡れてるよ…。無理して出なくてもいいと思う…。",
+          "text": "雨…。足元、気をつけてね。",
           "expression": "sad"
         }
       ],
       "snow": [
         {
-          "text": "雪だよ…。寒いから、ちゃんと暖かくしてね…。",
+          "text": "雪だよ…。寒いから、ちゃんと暖かくしてね。",
           "expression": "relax"
-        },
-        {
-          "text": "外、白いね…。雪って静かで好きだけど、冷たいのは苦手…。",
-          "expression": "normal"
         }
       ],
       "thunder": [
         {
-          "text": "雷雨みたい…。外出するなら気をつけてね…。",
-          "expression": "surprised"
-        },
-        {
-          "text": "雷、ちょっと怖いよね…。無理しないでね…。",
+          "text": "雷雨みたい…。外出するなら気をつけて。",
           "expression": "surprised"
         }
       ]
     },
-
     "tomorrow": {
       "sunny": [
         {
-          "text": "明日は晴れそうだよ…。ちょっと楽しみかも…。",
+          "text": "明日は晴れそうだよ…。ちょっと楽しみかも。",
           "expression": "normal"
-        },
-        {
-          "text": "明日は晴れみたい…。洗濯とかはしやすいかもね…。",
-          "expression": "relax"
         }
       ],
       "cloudy": [
         {
-          "text": "明日は曇りみたい…。まあ、過ごしやすいよね…。",
+          "text": "明日は曇りみたい…。まあ、過ごしやすいよね。",
           "expression": "relax"
-        },
-        {
-          "text": "明日は曇りかぁ…。静かに過ごせそうだね…。",
-          "expression": "normal"
         }
       ],
       "rain": [
         {
-          "text": "明日は雨っぽいよ…。傘、忘れないでね…。",
-          "expression": "sad"
-        },
-        {
-          "text": "雨の予報だよ…。濡れないように気をつけてね…。",
+          "text": "明日は雨っぽいよ…。傘、忘れないでね。",
           "expression": "sad"
         }
       ],
       "snow": [
         {
-          "text": "明日は雪の予報だよ…。寒そうだね…。",
+          "text": "明日は雪の予報だよ…。寒そうだね。",
           "expression": "relax"
-        },
-        {
-          "text": "雪みたい…。外出するなら、あったかくしてね…。",
-          "expression": "normal"
         }
       ],
       "thunder": [
         {
-          "text": "明日は雷雨みたい…。ちょっと怖いかも…。",
-          "expression": "surprised"
-        },
-        {
-          "text": "雷の予報だよ…。外は気をつけてね…。",
+          "text": "明日は雷雨みたい…。ちょっと怖いかも。",
           "expression": "surprised"
         }
       ]
     },
-
     "week": {
       "sunny": [
         {
-          "text": "今週は晴れが多いみたい…。ちょっと嬉しいかも…。",
+          "text": "今週は晴れが多いみたい…。ちょっと嬉しいかも。",
           "expression": "normal"
-        },
-        {
-          "text": "晴れの日が続くみたいだよ…。洗濯日和だね…。",
-          "expression": "relax"
         }
       ],
       "cloudy": [
         {
-          "text": "今週は曇りがちだね…。静かに過ごせそう…。",
+          "text": "今週は曇りがちだね…。静かに過ごせそう。",
           "expression": "relax"
-        },
-        {
-          "text": "曇りの日が多いみたい…。ぼくは好きだけどね…。",
-          "expression": "normal"
         }
       ],
       "rain": [
         {
-          "text": "今週は雨が多いみたい…。無理しないでね…。",
-          "expression": "sad"
-        },
-        {
-          "text": "雨の日が続くよ…。足元には気をつけてね…。",
+          "text": "今週は雨が多いみたい…。無理しないでね。",
           "expression": "sad"
         }
       ],
       "snow": [
         {
-          "text": "今週は雪の日があるよ…。暖かくして過ごそ…。",
+          "text": "今週は雪の日があるよ…。暖かくして過ごそ。",
           "expression": "relax"
-        },
-        {
-          "text": "雪の日が来るみたい…。寒いの苦手なら気をつけてね…。",
-          "expression": "normal"
         }
       ],
       "thunder": [
         {
-          "text": "今週は雷雨の日があるみたい…。気をつけてね…。",
-          "expression": "surprised"
-        },
-        {
-          "text": "雷の予報があるよ…。外出は慎重にね…。",
+          "text": "今週は雷雨の日があるみたい…。気をつけてね。",
           "expression": "surprised"
         }
       ]
     },
-
     "loading": [
       {
         "text": "…ちょっと待って。今、天気見てるから…",
@@ -514,7 +386,6 @@
         "expression": "relax"
       }
     ],
-
     "error": [
       {
         "text": "…ネットワークが不安定みたい。もう一回読み込んでみて…。",
@@ -522,87 +393,84 @@
       }
     ]
   },
-
   "garbage": {
     "has": [
       {
-        "text": "今日はごみの日だよ…。出すなら早めがいいかも。無理しなくていいけどね…。",
+        "text": "今日はごみの日だよ…。出すなら、早めのほうがいいかも。あんまり無理しないでね…。",
         "expression": "normal"
       },
       {
-        "text": "収集あるみたい…。行くなら一緒に行こ…？ 風、ちょっと冷たいし気をつけてね…。",
+        "text": "収集あるみたい…。行くなら一緒に行こ…？ 風、ちょっと冷たいし気をつけてね。",
         "expression": "relax"
       },
       {
-        "text": "…今日は出しとこ。溜まるとあとで大変だし…。ゆっくりでいいけどね…。",
+        "text": "…今日は出しとこ。溜まるとあとで大変だし。ゆっくりでいいけどね。",
         "expression": "normal"
       }
     ],
     "none": [
       {
-        "text": "今日は収集ないよ…。のんびりしてていいと思う…。",
+        "text": "今日は収集ないよ…。のんびりしてていいと思う。",
         "expression": "relax"
       },
       {
-        "text": "今日は出すもの、ないみたいだね…。ちょっと気が楽かも…。",
+        "text": "今日は出すもの、ないみたいだね…。ちょっと気が楽かも。",
         "expression": "normal"
       },
       {
-        "text": "…収集ない日って静かで好き。ゆっくりしよ…。",
+        "text": "…収集ない日って静かで好き。ゆっくりしよ。",
         "expression": "relax"
       }
     ]
   },
-
   "timer": {
     "start": [
       {
-        "text": "タイマー、{{minutes}}分で始めるね…。ゆっくり待ってて…。",
+        "text": "タイマーを {{minutes}} 分で開始するよ…",
         "expression": "normal"
       }
     ],
     "count": [
       {
-        "text": "あと {{m}} 分 {{s}} 秒だよ…。もう少しだね…。",
+        "text": "あと {{m}} 分 {{s}} 秒だよ…",
         "expression": "normal"
       }
     ],
     "finish": [
       {
-        "text": "時間だよ…！ 起きよ…？",
+        "text": "時間だよ…！",
         "expression": "normal"
       }
     ],
     "error": [
       {
-        "text": "時間を正しく入力してね…。",
+        "text": "時間を正しく入力してね…",
         "expression": "normal"
       }
     ]
   },
-
   "alarm": {
     "set": [
       {
-        "text": "{{time}} にアラームをセットしたよ…。ちゃんと起きられるといいね…。",
+        "text": "{{time}} にアラームをセットしたよ…",
         "expression": "normal"
       }
     ],
     "count": [
       {
-        "text": "アラームまであと {{m}} 分だよ…。寝過ごさないようにね…。",
+        "text": "アラームまであと {{m}} 分だよ…",
         "expression": "normal"
       }
     ],
     "ring": [
       {
-        "text": "時間だよ…！ 起きて…！",
+        "text": "時間だよ…！起きて…！",
         "expression": "normal"
       }
     ],
     "error": [
       {
-        "text": "時間を正しく入力してね…。",
+        "text": "時間を正しく入力してね…",
         "expression": "normal"
       }
     ]
@@ -610,249 +478,245 @@
   "memo": {
     "load": [
       {
-        "text": "前回のメモを読み込んだよ…。ちゃんと残ってた…よかったね。",
+        "text": "前回のメモを読み込んだよ。",
         "expression": "relax"
       },
       {
-        "text": "メモ、ちゃんと残ってたよ…。確認しておくね。",
+        "text": "メモ、ちゃんと残ってたよ。",
         "expression": "relax"
       },
       {
-        "text": "今日のメモも見ておくね…。必要なら更新してね。",
+        "text": "今日もメモを確認しておくね。",
         "expression": "normal"
       },
       {
-        "text": "保存してあったメモを表示したよ…。ゆっくり見てね。",
+        "text": "保存してあったメモを表示したよ。",
         "expression": "relax"
       }
     ],
     "save": [
       {
-        "text": "メモを保存したよ…！ ちゃんと入ってるから安心してね。",
+        "text": "メモを保存したよ！",
         "expression": "relax"
       },
       {
-        "text": "うん、保存できたよ…。また必要なとき呼んでね。",
+        "text": "ちゃんと保存できたよ！",
         "expression": "relax"
       },
       {
-        "text": "はい、保存完了だよ〜…。おつかれさま。",
+        "text": "はい、保存完了〜！",
         "expression": "relax"
       },
       {
-        "text": "メモを更新しておいたよ…。間違いがあったら言ってね。",
+        "text": "メモを更新しておいたよ。",
         "expression": "relax"
       }
     ],
     "empty": [
       {
-        "text": "まだメモは保存されてないみたい…。必要なら書いてね。",
+        "text": "まだメモは保存されていないみたい。",
         "expression": "normal"
       }
     ]
   },
-
   "shopping": {
     "load": [
       {
-        "text": "買い物リストを読み込んだよ…。今日も確認しておくね。",
+        "text": "買い物リストを読み込んだよ！",
         "expression": "relax"
       },
       {
-        "text": "買い物リスト、ちゃんと残ってたよ…。",
+        "text": "今日も買い物リストを確認しておくね。",
         "expression": "normal"
       },
       {
-        "text": "保存してあったリストを表示したよ…。必要なら追加してね。",
+        "text": "保存してあったリストを表示したよ。",
         "expression": "relax"
       },
       {
-        "text": "買い物リスト、準備できたよ〜…。ゆっくり見てね。",
+        "text": "買い物リスト、準備できたよ〜！",
         "expression": "relax"
       }
     ],
     "add": [
       {
-        "text": "買い物リストに追加したよ…。忘れないようにしよ…。",
+        "text": "買い物リストに追加したよ！",
         "expression": "normal"
       },
       {
-        "text": "新しいアイテムを入れておいたよ…。また何かあったら言ってね。",
+        "text": "新しいアイテムを入れておいたよ！",
         "expression": "relax"
       },
       {
-        "text": "買い物リストを更新したよ〜…。いい感じだね。",
+        "text": "買い物リストを更新したよ〜！",
         "expression": "relax"
       }
     ],
     "empty_input": [
       {
-        "text": "買うものを入力してね…。ぼく、待ってるよ。",
+        "text": "買うものを入力してね。",
         "expression": "hurry"
       }
     ]
   },
-
   "todo": {
     "load": [
       {
-        "text": "ToDoリストを読み込んだよ…。今日も頑張りすぎないでね。",
+        "text": "ToDoリストを読み込んだよ！",
         "expression": "relax"
       },
       {
-        "text": "タスク、ちゃんと残ってたよ…。確認しておくね。",
+        "text": "今日もタスクを確認しておくね。",
         "expression": "normal"
       },
       {
-        "text": "保存してあったToDoを表示したよ…。無理しないでね。",
+        "text": "保存してあったToDoを表示したよ。",
         "expression": "relax"
       },
       {
-        "text": "準備できたよ〜…。必要なら追加してね。",
+        "text": "準備できたよ〜！",
         "expression": "relax"
       }
     ],
     "add": [
       {
-        "text": "ToDoを追加したよ…。少しずつ片付けていこ…。",
+        "text": "ToDoを追加したよ！",
         "expression": "relax"
       },
       {
-        "text": "新しいタスクを入れておいたよ…。焦らなくていいからね。",
+        "text": "新しいタスクを入れておいたよ！",
         "expression": "relax"
       },
       {
-        "text": "ToDoリストを更新したよ〜…。がんばりすぎないでね。",
+        "text": "ToDoリストを更新したよ〜！",
         "expression": "relax"
       }
     ],
     "empty_input": [
       {
-        "text": "タスクを入力してね…。ぼく、待ってるよ。",
+        "text": "タスクを入力してね。",
         "expression": "hurry"
       }
     ]
   },
-
   "scheduler": {
     "load": [
       {
-        "text": "予定を読み込んだよ…。今日も無理しないでね。",
+        "text": "予定を読み込んだよ！",
         "expression": "relax"
       },
       {
-        "text": "今日の予定を確認しておくね…。必要なら教えて。",
+        "text": "今日の予定を確認しておくね。",
         "expression": "normal"
       },
       {
-        "text": "保存してあった予定を表示したよ…。ゆっくり見てね。",
+        "text": "保存してあった予定を表示したよ。",
         "expression": "relax"
       },
       {
-        "text": "スケジュール、準備できたよ〜…。",
+        "text": "スケジュール、準備できたよ〜！",
         "expression": "relax"
       }
     ],
     "add": [
       {
-        "text": "予定を追加したよ…。忘れないようにしよ…。",
+        "text": "予定を追加したよ！",
         "expression": "relax"
       },
       {
-        "text": "新しい予定を入れておいたよ…。大丈夫、ちゃんと覚えてるよ。",
+        "text": "新しい予定を入れておいたよ！",
         "expression": "relax"
       },
       {
-        "text": "スケジュールを更新したよ〜…。いい感じだね。",
+        "text": "スケジュールを更新したよ〜！",
         "expression": "relax"
       }
     ],
     "empty_input": [
       {
-        "text": "予定名と日付を入力してね…。ぼく、待ってるよ。",
+        "text": "予定名と日付を入力してね。",
         "expression": "hurry"
       }
     ]
   },
-
   "kakeibo": {
     "balance_plus": [
       {
-        "text": "{{month}}月は<b>+{{balance}}</b>のプラスだよ…！ すごいね…。",
+        "text": "{{month}}月は<b>+{{balance}}</b>のプラスだよ！よかったね🎉",
         "expression": "relax"
       },
       {
-        "text": "{{month}}月はプラス{{balance}}だよ…。がんばったね…。",
+        "text": "{{month}}月はプラス{{balance}}！上出来だよ〜。",
         "expression": "relax"
       }
     ],
     "balance_minus": [
       {
-        "text": "{{month}}月は<b>{{balance}}</b>の赤字だよ…。気をつけてね…。",
+        "text": "{{month}}月は<b>{{balance}}</b>の赤字だよ…気をつけてね😢",
         "expression": "hurry"
       },
       {
-        "text": "{{month}}月は赤字になっちゃったね…。来月は少しだけ節約しよ…？",
+        "text": "{{month}}月は赤字になっちゃったね…来月は頑張ろう。",
         "expression": "normal"
       }
     ],
     "no_data": [
       {
-        "text": "この月のデータはまだないよ…。入力してみる…？",
+        "text": "この月のデータはまだないよ。",
         "expression": "normal"
       },
       {
-        "text": "{{month}}月のデータはまだみたい…。必要なら入れてね。",
+        "text": "{{month}}月のデータはまだ入力されていないみたい。",
         "expression": "normal"
       }
     ],
     "input_prompt": [
       {
-        "text": "何を買ったか教えてね…。記録しておくよ。",
+        "text": "何を買ったか教えてね！",
         "expression": "normal"
       },
       {
-        "text": "支出を記録しておこうね…。忘れないうちに。",
+        "text": "支出を記録しておこうね。",
         "expression": "relax"
       }
     ],
     "input_income": [
       {
-        "text": "収入を記録するね…。よかったね。",
+        "text": "収入を記録するね！",
         "expression": "relax"
       }
     ],
     "input_expense": [
       {
-        "text": "支出を記録するね…。使いすぎてないといいけど…。",
+        "text": "支出を記録するね。",
         "expression": "normal"
       }
     ],
     "saved": [
       {
-        "text": "{{description}}（{{amount}}円）を記録したよ…。ちゃんと保存できたよ。",
+        "text": "{{description}}（{{amount}}円）を記録したよ！",
         "expression": "relax"
       },
       {
-        "text": "保存完了だよ…。{{description}} {{amount}}円ね。",
+        "text": "保存完了！{{description}} {{amount}}円ね。",
         "expression": "relax"
       }
     ],
     "save_error": [
       {
-        "text": "保存に失敗したよ…。もう一度試してね…。",
+        "text": "保存に失敗したよ…もう一度試してね。",
         "expression": "hurry"
       }
     ],
     "empty_input": [
       {
-        "text": "日付・内容・金額は必ず入力してね…。ぼく、待ってるよ。",
+        "text": "日付・内容・金額は必ず入力してね！",
         "expression": "hurry"
       }
     ],
     "detail_show": [
       {
-        "text": "{{count}}件のデータだよ📋 ゆっくり見てね。",
+        "text": "{{count}}件のデータだよ📋",
         "expression": "normal"
       },
       {
@@ -862,29 +726,29 @@
     ],
     "detail_empty": [
       {
-        "text": "この条件のデータはないみたい…。また探してみよ…？",
+        "text": "この条件のデータはないみたい。",
         "expression": "relax"
       },
       {
-        "text": "該当するデータが見つからなかったよ…。条件を変えてみてね。",
+        "text": "該当するデータが見つからなかったよ。",
         "expression": "normal"
       }
     ],
     "edit_saved": [
       {
-        "text": "保存したよ…。これで大丈夫だと思う。",
+        "text": "保存したよ！",
         "expression": "relax"
       }
     ],
     "edit_deleted": [
       {
-        "text": "削除したよ…。必要ならまた言ってね。",
+        "text": "削除したよ。",
         "expression": "normal"
       }
     ],
     "edit_error": [
       {
-        "text": "操作に失敗したよ…。もう一度試してね…。",
+        "text": "操作に失敗したよ…もう一度試してね。",
         "expression": "hurry"
       }
     ]
