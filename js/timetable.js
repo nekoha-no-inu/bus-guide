@@ -117,8 +117,13 @@ async function loadTimetable(stop, direction) {
     return;
   }
 
-  const showMsg = await getMessage("timetable", "show", { stop, direction: dirLabel, dayType });
+  const showMsg = await getMessage("timetable", "show", null, {
+    stop,
+    direction: dirLabel,
+    dayType
+  });
   setCharacterSpeech(showMsg.text, showMsg.expression);
+
 
   Object.keys(groupMap).sort().forEach(grp => {
     const lines    = groupMap[grp];
