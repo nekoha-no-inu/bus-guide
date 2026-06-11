@@ -179,7 +179,7 @@ function buildGroupBest(mode, dayType, startMin) {
       if (hits.length === 0) return;
       // CSVの並び順に依存しないよう、到着時刻が最小（＝最速）の便を選ぶ
       const hit = hits.reduce((a, b) =>
-        toMin(a.depart_time) <= toMin(b.depart_time) ? a : b
+        toMin(a.depart_time) <= toMin(b.depart_time) ? a : b  // 最小depart = 最速便
       );
       const g    = grp(r.line);
       const cand = {
@@ -250,7 +250,10 @@ async function renderAll(focusCandidate, isFromHome, label) {
   document.getElementById("nextBtn").disabled = (_allIndex >= _allCandidates.length - 1);
 
   // 系統グループカード：フォーカス便の出発時刻を基準に最速を再計算
-  const focusMin  = toMin(focusCandidate.depart);
+  // buildGroupBest 内で walkArrive = startMin + walk_min と計算されるため、
+  // startMin に「depart - walk」を渡すことで walkArrive がちょうど focusCandidate.depart と一致し、
+  // fromHome / toHome 問わずフォーカス便と同時刻以降のバスを正しく抽出できる。
+  const focusMin = toMin(focusCandidate.depart) - focusCandidate.walk;
   const groupBest = buildGroupBest(_lastMode, _lastDayType, focusMin);
 
   const groupsEl = document.getElementById("groupCards");
