@@ -147,7 +147,6 @@ function buildAllCandidates(mode, dayType, startMin) {
           s.direction === r.direction && s.day_type === dayType &&
           toMin(s.depart_time) >= walkArrive
         )
-        .sort((a, b) => toMin(a.depart_time) - toMin(b.depart_time))  // CSV順に依存しないよう昇順ソート
         .map(s => ({
           line:   r.line, group: grp(r.line),
           stop:   r.stop, getoff: r.getoff,
@@ -171,16 +170,12 @@ function buildGroupBest(mode, dayType, startMin) {
     .filter(r => r.mode === mode && (r.line !== "深夜" || isLate))
     .forEach(r => {
       const walkArrive = startMin + Number(r.walk_min);
-      const hits = schedules.filter(s =>
+      const hit = schedules.find(s =>
         s.route === r.line && s.stop === r.stop &&
         s.direction === r.direction && s.day_type === dayType &&
         toMin(s.depart_time) >= walkArrive
       );
-      if (hits.length === 0) return;
-      // CSVの並び順に依存しないよう、到着時刻が最小（＝最速）の便を選ぶ
-      const hit = hits.reduce((a, b) =>
-        toMin(a.depart_time) <= toMin(b.depart_time) ? a : b  // 最小depart = 最速便
-      );
+      if (!hit) return;
       const g    = grp(r.line);
       const cand = {
         line:  r.line, group: g,
@@ -250,10 +245,7 @@ async function renderAll(focusCandidate, isFromHome, label) {
   document.getElementById("nextBtn").disabled = (_allIndex >= _allCandidates.length - 1);
 
   // 系統グループカード：フォーカス便の出発時刻を基準に最速を再計算
-  // buildGroupBest 内で walkArrive = startMin + walk_min と計算されるため、
-  // startMin に「depart - walk」を渡すことで walkArrive がちょうど focusCandidate.depart と一致し、
-  // fromHome / toHome 問わずフォーカス便と同時刻以降のバスを正しく抽出できる。
-  const focusMin = toMin(focusCandidate.depart) - focusCandidate.walk;
+  const focusMin  = toMin(focusCandidate.depart);
   const groupBest = buildGroupBest(_lastMode, _lastDayType, focusMin);
 
   const groupsEl = document.getElementById("groupCards");
