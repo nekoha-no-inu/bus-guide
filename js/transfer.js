@@ -140,13 +140,17 @@ function buildAllCandidates(mode, dayType, startMin) {
   return routes
     .filter(r => r.mode === mode && (r.line !== "深夜" || isLate))
     .flatMap(r => {
-      const walkArrive = startMin + Number(r.walk_min);
+      // fromHome: バス停まで歩く時間が必要 / toHome: すでにバス停にいるので不要
+      const walkArrive = mode.startsWith("自宅→")
+        ? startMin + Number(r.walk_min)
+        : startMin;
       return schedules
         .filter(s =>
           s.route === r.line && s.stop === r.stop &&
           s.direction === r.direction && s.day_type === dayType &&
           toMin(s.depart_time) >= walkArrive
         )
+        .sort((a, b) => toMin(a.depart_time) - toMin(b.depart_time))  // CSV順に依存しないよう昇順ソート
         .map(s => ({
           line:   r.line, group: grp(r.line),
           stop:   r.stop, getoff: r.getoff,
@@ -169,13 +173,20 @@ function buildGroupBest(mode, dayType, startMin) {
   routes
     .filter(r => r.mode === mode && (r.line !== "深夜" || isLate))
     .forEach(r => {
-      const walkArrive = startMin + Number(r.walk_min);
-      const hit = schedules.find(s =>
+      // fromHome: バス停まで歩く時間が必要 / toHome: すでにバス停にいるので不要
+      const walkArrive = mode.startsWith("自宅→")
+        ? startMin + Number(r.walk_min)
+        : startMin;
+      const hits = schedules.filter(s =>
         s.route === r.line && s.stop === r.stop &&
         s.direction === r.direction && s.day_type === dayType &&
         toMin(s.depart_time) >= walkArrive
       );
-      if (!hit) return;
+      if (hits.length === 0) return;
+      // CSVの並び順に依存しないよう、到着時刻が最小（＝最速）の便を選ぶ
+      const hit = hits.reduce((a, b) =>
+        toMin(a.depart_time) <= toMin(b.depart_time) ? a : b  // 最小depart = 最速便
+      );
       const g    = grp(r.line);
       const cand = {
         line:  r.line, group: g,
@@ -245,7 +256,9 @@ async function renderAll(focusCandidate, isFromHome, label) {
   document.getElementById("nextBtn").disabled = (_allIndex >= _allCandidates.length - 1);
 
   // 系統グループカード：フォーカス便の出発時刻を基準に最速を再計算
-  const focusMin  = toMin(focusCandidate.depart);
+  // buildGroupBest 内でモードに応じて walk_min の加算有無を判断するため、
+  // startMin にはバス停出発時刻（depart）をそのまま渡す。
+  const focusMin = toMin(focusCandidate.depart);
   const groupBest = buildGroupBest(_lastMode, _lastDayType, focusMin);
 
   const groupsEl = document.getElementById("groupCards");
