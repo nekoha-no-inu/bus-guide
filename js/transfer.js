@@ -1,6 +1,7 @@
 // ======================================
 // transfer.js  ─  バス乗り換え案内
 // ======================================
+console.log("transfer.js loaded");
 
 const HOLIDAY_API =
   "https://www.googleapis.com/calendar/v3/calendars/japanese__ja@holiday.calendar.google.com/events?key=AIzaSyCCQB3KoCaFIvG1Wf8xy7y03d1ACHjqpsU";
@@ -136,11 +137,22 @@ async function speak(c, isFromHome, label) {
 // ---- 候補を全件取得 ----
 
 function buildAllCandidates(mode, dayType, startMin) {
+  console.log("=== buildAllCandidates START ===");
+  console.log("mode:", mode, "dayType:", dayType, "startMin:", startMin);
   const isLate = startMin >= 23 * 60;
   return routes
-    .filter(r => r.mode === mode && (r.line !== "深夜" || isLate))
+    .filter(r => {
+      const ok = (r.mode === mode && (r.line !== "深夜" || isLate));
+      if (!ok) {
+        console.log("SKIP route (mode mismatch or 深夜制限):", r);
+      }
+      return ok;
+    })
     .flatMap(r => {
+      console.log("---- checking route:", r);
       const walkArrive = startMin + Number(r.walk_min);
+      console.log("walkArrive:", walkArrive);
+
       return schedules
         .filter(s =>
           s.route === r.line && s.stop === r.stop &&
@@ -265,6 +277,8 @@ async function renderAll(focusCandidate, isFromHome, label) {
 // ---- 検索メイン ----
 
 async function searchBus() {
+  console.log("=== searchBus START ===");
+
   const datetime = document.getElementById("datetime").value;
   if (!datetime) {
     document.getElementById("bubble").innerHTML = "日時を入力してね。";
@@ -277,6 +291,13 @@ async function searchBus() {
   const dayType    = getDayType(dt);
   const isFromHome = mode.startsWith("自宅→");
 
+  console.log("datetime:", datetime);
+  console.log("dt:", dt);
+  console.log("startMin:", startMin);
+  console.log("mode:", mode);
+  console.log("dayType:", dayType);
+  console.log("isFromHome:", isFromHome);
+
   _lastMode       = mode;
   _lastDayType    = dayType;
   _lastIsFromHome = isFromHome;
@@ -285,6 +306,9 @@ async function searchBus() {
 
   _allCandidates = buildAllCandidates(mode, dayType, startMin);
   _allIndex      = 0;
+
+  console.log("allCandidates:", _allCandidates);
+  console.log("count:", _allCandidates.length);
 
   if (_allCandidates.length === 0) {
     document.getElementById("routeCard").style.display = "none";
@@ -317,6 +341,9 @@ async function showNextBus() {
 // ---- 初期化 ----
 
 window.addEventListener("load", async () => {
+  window.addEventListener("load", () => {
+    console.log("window loaded");
+  });
   document.getElementById("bubble").innerHTML = "行き先と日時を選んで検索してね！";
   await Promise.all([loadCSV(), loadHolidays()]);
   document.getElementById("datetime").value = fmtDTL(new Date());
