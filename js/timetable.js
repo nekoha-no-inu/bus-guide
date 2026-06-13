@@ -48,41 +48,90 @@ function setToday() {
 // routes.csv の (stop → getoff) の組み合わせをユニークに列挙してボタン化
 
 function buildRouteButtons() {
-  // stop→getoff の重複を除いた組み合わせリスト
-  const seen = new Set();
-  const combos = [];
-
-  _routes.forEach(r => {
-    if (!r.getoff) return;
-    const key = `${r.stop}→${r.getoff}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      combos.push({ stop: r.stop, getoff: r.getoff, direction: r.direction });
-    }
-  });
-
   const container = document.getElementById("routeButtons");
   container.innerHTML = "";
 
-  combos.forEach(({ stop, getoff, direction }) => {
+  // 4分類
+  const groups = {
+    "清瀬駅 → 自宅": [],
+    "新座駅 → 自宅": [],
+    "自宅 → 清瀬駅": [],
+    "自宅 → 新座駅": []
+  };
+
+  // stop→getoff→direction ごとに集計
+  const map = {};
+
+  _routes.forEach(r => {
+    if (!r.getoff) return;
+
+    const key = `${r.stop}→${r.getoff}→${r.direction}`;
+    if (!map[key]) {
+      map[key] = {
+        stop: r.stop,
+        getoff: r.getoff,
+        direction: r.direction,
+        lines: new Set()
+      };
+    }
+    // 枝番を除去して追加
+    map[key].lines.add(r.line.replace(/-\d+$/, ""));
+  });
+
+  // 分類
+  Object.values(map).forEach(item => {
+    const stop      = item.stop;
+    const getoff    = item.getoff;
+    const direction = item.direction;
+    const lines     = Array.from(item.lines).sort().join("・");
+
     const btn = document.createElement("button");
-    btn.className   = "route-select-btn";
-    btn.textContent = `${stop} → ${getoff}`;
+    btn.className = "route-select-btn";
+    btn.textContent = `${stop} → ${getoff}（${lines}系統）`;
+
     btn.dataset.stop      = stop;
     btn.dataset.getoff    = getoff;
     btn.dataset.direction = direction;
+
     btn.addEventListener("click", () => {
       document.querySelectorAll(".route-select-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
-      loadTimetable(stop, direction);
+      loadTimetable(stop, getoff, direction);
     });
-    container.appendChild(btn);
+
+    // ---- 分類ロジック ----
+    if (stop === "清瀬駅北口") {
+      groups["清瀬駅 → 自宅"].push(btn);
+    } else if (stop === "新座駅南口") {
+      groups["新座駅 → 自宅"].push(btn);
+    } else {
+      // 自宅側のバス停
+      if (direction === "清瀬駅方向") {
+        groups["自宅 → 清瀬駅"].push(btn);
+      } else if (direction === "新座駅方向") {
+        groups["自宅 → 新座駅"].push(btn);
+      }
+    }
+  });
+
+  // ---- HTML 出力 ----
+  Object.keys(groups).forEach(title => {
+    const section = document.createElement("div");
+    section.className = "route-group-section";
+
+    const h = document.createElement("h3");
+    h.textContent = title;
+    section.appendChild(h);
+
+    groups[title].forEach(btn => section.appendChild(btn));
+    container.appendChild(section);
   });
 }
 
+
 // ---- 時刻表表示 ----
 
-async function loadTimetable(stop, direction) {
+async function loadTimetable(stop, getoff, direction) {
   const dateStr = document.getElementById("dateInput").value;
   if (!dateStr) {
     const msg = await getMessage("timetable", "no_date");
@@ -99,7 +148,19 @@ async function loadTimetable(stop, direction) {
   const groupMap = {};  // { "清61": { "清61": [times], "清61-1": [times] }, ... }
 
   _schedules
-    .filter(s => s.stop === stop && s.direction === direction && s.day_type === dayType)
+// ① routes.csv から stop→getoff に一致する route を抽出
+const targetLines = _routes
+  .filter(r => r.stop === stop && r.getoff === getoff && r.direction === direction)
+  .map(r => r.line);
+
+// ② schedules.csv は targetLines のみ対象にする
+_schedules
+  .filter(s =>
+      targetLines.includes(s.route) &&
+      s.stop === stop &&
+      s.direction === direction &&
+      s.day_type === dayType
+    )
     .forEach(s => {
       const g = routeGroup(s.route);
       if (!groupMap[g]) groupMap[g] = {};
