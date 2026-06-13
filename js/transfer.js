@@ -141,13 +141,7 @@ function buildAllCandidates(mode, dayType, startMin) {
   console.log("mode:", mode, "dayType:", dayType, "startMin:", startMin);
   const isLate = startMin >= 23 * 60;
   return routes
-    .filter(r => {
-      const ok = (r.mode === mode && (r.line !== "深夜" || isLate));
-      if (!ok) {
-        console.log("SKIP route (mode mismatch or 深夜制限):", r);
-      }
-      return ok;
-    })
+    .filter(r => r.mode === mode)
     .flatMap(r => {
       console.log("---- checking route:", r);
       const walkArrive = startMin + Number(r.walk_min);
@@ -174,34 +168,32 @@ function buildAllCandidates(mode, dayType, startMin) {
 }
 
 // ---- 系統グループ別の最速1件 ----
+function buildGroupBestFromAll(allCandidates, baseMin) {
+  const best = {};
 
-function buildGroupBest(mode, dayType, startMin) {
-  const isLate = startMin >= 23 * 60;
-  const best   = {};
-  routes
-    .filter(r => r.mode === mode && (r.line !== "深夜" || isLate))
-    .forEach(r => {
-      const walkArrive = startMin + Number(r.walk_min);
-      const hit = schedules.find(s =>
-        s.route === r.line && s.stop === r.stop &&
-        s.direction === r.direction && s.day_type === dayType &&
-        toMin(s.depart_time) >= walkArrive
-      );
-      if (!hit) return;
-      const g    = grp(r.line);
-      const cand = {
-        line:  r.line, group: g,
-        stop:  r.stop, getoff: r.getoff,
-        depart: hit.depart_time,
-        arrive: toTime(toMin(hit.depart_time) + Number(r.ride_min)),
-        walk:  Number(r.walk_min), ride: Number(r.ride_min),
-      };
-      if (!best[g] || toMin(cand.arrive) < toMin(best[g].arrive)) {
-        best[g] = cand;
+  // メイン便が23:00以降かどうか
+  const showMidnight = baseMin >= 23 * 60;
+
+  allCandidates
+    .filter(c => {
+      // baseMin 以降の便だけ
+      if (toMin(c.depart) < baseMin) return false;
+
+      // 深夜便は「メイン便が23:00以降のときだけ」表示
+      if (c.line === "深夜" && !showMidnight) return false;
+
+      return true;
+    })
+    .forEach(c => {
+      const g = grp(c.line);
+      if (!best[g] || toMin(c.arrive) < toMin(best[g].arrive)) {
+        best[g] = c;
       }
     });
+
   return best;
 }
+
 
 // ---- ルートカード HTML ----
 
@@ -258,7 +250,16 @@ async function renderAll(focusCandidate, isFromHome, label) {
 
   // 系統グループカード：フォーカス便の出発時刻を基準に最速を再計算
   const focusMin  = toMin(focusCandidate.depart);
-  const groupBest = buildGroupBest(_lastMode, _lastDayType, focusMin);
+  // const groupBest = buildGroupBest(_lastMode, _lastDayType, focusMin);
+  // 初回表示は startMin を使う
+  let baseMin;
+  if (label === "first") {
+    baseMin = _initialStartMin;
+  } else {
+    baseMin = toMin(focusCandidate.depart);
+  }
+
+  const groupBest = buildGroupBestFromAll(_allCandidates, baseMin);
 
   const groupsEl = document.getElementById("groupCards");
   groupsEl.innerHTML = "";
@@ -301,6 +302,7 @@ async function searchBus() {
   _lastMode       = mode;
   _lastDayType    = dayType;
   _lastIsFromHome = isFromHome;
+  _initialStartMin = startMin;
 
   document.getElementById("dayTypeDisplay").innerText = `この日は「${dayType}」ダイヤです`;
 
@@ -322,6 +324,7 @@ async function searchBus() {
   }
 
   await renderAll(_allCandidates[0], isFromHome, "first");
+
 }
 
 // ---- 前/次ボタン ----
