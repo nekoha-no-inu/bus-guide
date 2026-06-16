@@ -887,6 +887,11 @@
         "text": "操作に失敗したよ…。もう一度試してね…。",
         "expression": "hurry"
       }
+    ],
+    "balance_neutral": [
+      { "text": "{{month}}月の収支を確認したよ～", "expression": "normal" },
+      { "text": "{{month}}月のデータをまとめたよ", "expression": "relax" },
+      { "text": "{{month}}月の状況をチェックしたよ～", "expression": "normal" }
     ]
   }
 }

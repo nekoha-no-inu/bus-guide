@@ -119,21 +119,33 @@ async function render() {
   }
 
   // キャラセリフ（JSON）
+  // キャラセリフ（JSON）
   let msg;
+
+  // 今月かどうか判定
+  const now = new Date();
+  const thisYM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+
   if (expense === 0 && income === 0) {
     msg = await getMessage("kakeibo", "no_data", null, { month });
-  } else if (balance >= 0) {
-    msg = await getMessage("kakeibo", "balance_plus", null, { month, balance: fmt(balance) });
+  } else if (currentYM === thisYM) {
+    // ★ 今月はニュートラルコメント
+    msg = await getMessage("kakeibo", "balance_neutral", null, { month });
   } else {
-    msg = await getMessage("kakeibo", "balance_minus", null, { month, balance: fmt(Math.abs(balance)) });
+    // ★ 前月以前は従来どおりポジティブ／ネガティブ
+    if (balance >= 0) {
+      msg = await getMessage("kakeibo", "balance_plus", null, { month, balance: fmt(balance) });
+    } else {
+      msg = await getMessage("kakeibo", "balance_minus", null, { month, balance: fmt(Math.abs(balance)) });
+    }
   }
 
   document.getElementById("bubble").innerHTML = msg.text;
   setCharacterExpression(msg.expression);
+
   }
 
 window.addEventListener("load", async () => {
-  await importInitialDataIfNeeded();
   render();
 });
 </script>
