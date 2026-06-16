@@ -10,30 +10,45 @@
 
 </head>
 <script>
-async function loadLastUpdate() {
+async function checkAppVersion() {
   try {
+    // GitHub 最新コミット日時を取得（loadLastUpdate と同じ API）
     const res = await fetch("https://api.github.com/repos/nekoha-no-inu/bus-guide/commits/main");
     const data = await res.json();
+    const serverDate = data.commit.committer.date; // ISO文字列
 
-    const date = new Date(data.commit.committer.date);
-    const formatted =
-      `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日 `
-      + `${date.getHours()}時${date.getMinutes()}分`;
+    const localDate = localStorage.getItem("appUpdatedAt");
 
-    document.getElementById("lastUpdate").innerText =
-      `最終更新：${formatted}`;
+    // 初回 or サーバーの方が新しい場合
+    if (!localDate || serverDate > localDate) {
+      console.log("新しいバージョンを検出 → キャッシュ削除して再読み込み");
 
+      // Service Worker キャッシュ削除
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        for (const key of keys) {
+          await caches.delete(key);
+        }
+      }
+
+      // localStorage 更新
+      localStorage.setItem("appUpdatedAt", serverDate);
+
+      // 強制リロード
+      location.reload(true);
+    }
   } catch (e) {
-    document.getElementById("lastUpdate").innerText =
-      "最終更新：取得できませんでした";
+    console.error("バージョンチェック失敗:", e);
   }
 }
-
-loadLastUpdate();
 </script>
 
-
 <body onload="initHome(); initCharacterImage();">
+<script>
+  window.addEventListener("load", async () => {
+    await checkAppVersion();   // ← 追加
+  });
+</script>
 <div style="text-align: right;" id="lastUpdate">最終更新：取得中...</div>
 <h2>お助けクロくん</h2>
 <div id="datetimeArea" style="text-align:center;margin-top:10px;">
