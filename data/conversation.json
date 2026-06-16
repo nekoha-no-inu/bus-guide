@@ -893,5 +893,41 @@
       { "text": "{{month}}月のデータをまとめたよ", "expression": "relax" },
       { "text": "{{month}}月の状況をチェックしたよ～", "expression": "normal" }
     ]
+  },
+    "places": {
+    "load": [
+      {
+        "text": "行きたいところリストを開いたよ…。どこに行きたいか、一緒に考えよ…？",
+        "expression": "relax"
+      },
+      {
+        "text": "前にメモしておいた場所を表示したよ…。気になるところ、また増やしてもいいよ。",
+        "expression": "normal"
+      },
+      {
+        "text": "行きたい場所を並べてみたよ…。休みの日の参考にしてね。",
+        "expression": "relax"
+      }
+    ],
+    "add": [
+      {
+        "text": "行きたい場所を追加したよ…。いつか一緒に行けるといいね。",
+        "expression": "relax"
+      },
+      {
+        "text": "新しい行き先、ちゃんと覚えたよ…。予定立てるのが楽しみだね。",
+        "expression": "normal"
+      },
+      {
+        "text": "リストに入れておいたよ…。忘れないようにしておこ…。",
+        "expression": "relax"
+      }
+    ],
+    "empty_input": [
+      {
+        "text": "行きたい場所の名前を入力してね…。ぼく、待ってるよ。",
+        "expression": "hurry"
+      }
+    ]
   }
 }

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>行きたいところリスト</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <a href="home.html" class="menu-btn">← ホームに戻る</a>
+
+  <!-- キャラと吹き出し -->
+  <div class="character-area">
+    <div id="bubble" class="bubble">行きたいところリストを読み込んでいるよ…</div>
+    <img id="character" src="img/character_normal.png" class="character">
+  </div>
+
+  <div class="container">
+    <h2>行きたいところリスト</h2>
+
+    <!-- 追加欄 -->
+    <div class="add-item">
+      <input id="placeInput" type="text" placeholder="行きたい場所を入力">
+
+      <select id="categorySelect">
+        <option value="near">近場</option>
+        <option value="trip">旅行で行きたい</option>
+        <option value="someday">いつか行きたい</option>
+      </select>
+
+      <div class="add-buttons">
+        <button id="addPlaceBtn" class="action-btn">追加</button>
+        <button id="sortBtn" class="action-btn">並べ替え</button>
+      </div>
+    </div>
+
+    <!-- リスト表示（places.js がここにカードを生成） -->
+    <div id="placesList"></div>
+
+    <br>
+    <a href="home.html" class="menu-btn">← ホームに戻る</a>
+  </div>
+
+  <!-- Firebase SDK (compat版 v10) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+  <!-- 共通ユーティリティ + Firebase 初期化 -->
+  <script src="js/common.js"></script>
+  <script src="js/firebase.js"></script>
+
+  <!-- 行きたいところリスト専用 -->
+  <script src="js/places.js"></script>
+</body>
+</html>
