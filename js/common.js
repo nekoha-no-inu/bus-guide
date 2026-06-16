@@ -50,7 +50,7 @@ let _conversationCache = null;
 
 async function _loadConversation() {
   if (!_conversationCache) {
-    const res = await fetch("data/conversation.json");
+    const res = await fetch(`js/conversation.json?v=${localStorage.getItem("appUpdatedAt") || Date.now()}`);
     _conversationCache = await res.json();
   }
   return _conversationCache;
