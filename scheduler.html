@@ -21,20 +21,57 @@
   <div class="container">
     <h2>スケジューラー</h2>
 
-    <!-- 追加欄 -->
+    <div class="calendar-toolbar">
+      <button id="prevMonthBtn" class="action-btn">◀ 前月</button>
+      <h3 id="currentMonthLabel">年月</h3>
+      <button id="nextMonthBtn" class="action-btn">次月 ▶</button>
+    </div>
+
+    <div id="calendarGrid" class="calendar-grid"></div>
+
+    <div class="calendar-detail">
+      <h3 id="selectedDateLabel">日付の予定</h3>
+      <div id="selectedDateList"></div>
+    </div>
+
     <div class="add-item">
       <input id="scheduleInput" type="text" placeholder="予定を入力">
 
-      <input id="scheduleDate" type="date">
+      <div class="schedule-form-row">
+        <input id="scheduleStartDate" type="date">
+        <input id="scheduleEndDate" type="date">
+      </div>
+
+      <div class="schedule-form-row">
+        <input id="scheduleTime" type="time">
+        <label class="schedule-inline-option">
+          <input id="allDayCheck" type="checkbox">
+          終日
+        </label>
+      </div>
+
+      <div class="schedule-form-row">
+        <select id="schedulePerson">
+          <option value="共通">共通</option>
+          <option value="みき">みき</option>
+          <option value="みほ">みほ</option>
+        </select>
+        <input id="scheduleGenre" list="genreOptions" placeholder="ジャンル">
+      </div>
 
       <div class="add-buttons">
-        <button id="addScheduleBtn" class="action-btn">追加</button>
-        <button id="sortScheduleBtn" class="action-btn">並べ替え</button>
+        <button id="addScheduleBtn" class="action-btn">予定の追加</button>
       </div>
     </div>
 
-    <!-- リスト表示 -->
-    <div id="scheduleList"></div>
+    <datalist id="genreOptions">
+      <option value="仕事"></option>
+      <option value="学校"></option>
+      <option value="用事"></option>
+      <option value="習い事"></option>
+      <option value="イベント"></option>
+      <option value="予定"></option>
+    </datalist>
 
     <br>
     <a href="home.html" class="menu-btn">← ホームに戻る</a>

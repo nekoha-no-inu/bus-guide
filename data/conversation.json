@@ -122,6 +122,20 @@
         "expression": "relax"
       }
     ],
+    "schedulerReminder": {
+      "today": [
+        {
+          "text": "本日{{month}}月{{day}}日に{{count}}件の予定があるよ。{{names}}。忘れずに確認してね。",
+          "expression": "hurry"
+        }
+      ],
+      "tomorrow": [
+        {
+          "text": "明日{{month}}月{{day}}日に{{count}}件の予定があるよ。{{names}}。忘れずに確認してね。",
+          "expression": "hurry"
+        }
+      ]
+    },
     "tapReactions": {
       "tickle": [
         {

@@ -19,9 +19,9 @@
   </div>
 
   <div id="cityButtons">
-    <button onclick="changeCity('kiyose')" class="active">清瀬市</button>
-    <button onclick="changeCity('fukuoka')">福岡市</button>
-    <button onclick="changeCity('toyama')">富山市</button>
+    <button data-city="kiyose" class="active">清瀬市</button>
+    <button data-city="fukuoka">福岡市</button>
+    <button data-city="toyama">富山市</button>
   </div>
 
   <h2 id="cityTitle">の今日と明日の天気</h2>
@@ -38,14 +38,6 @@
 
   <script src="js/common.js"></script>
   <script src="js/weather.js"></script>
-
-  <script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js")
-      .then(() => console.log("SW registered"))
-      .catch(err => console.error("SW registration failed:", err));
-  }
-</script>
 
 
 </body>

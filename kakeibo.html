@@ -38,9 +38,9 @@
 </div>
 
 <div id="monthNav">
-  <button onclick="changeMonth(-1)">◀ 前月</button>
+  <button id="prevMonthBtn">◀ 前月</button>
   <div id="monthTitle">―</div>
-  <button onclick="changeMonth(+1)">次月 ▶</button>
+  <button id="nextMonthBtn">次月 ▶</button>
 </div>
 
 <div id="summary"><div id="loading">読み込み中…</div></div>
@@ -59,95 +59,5 @@
 <script src="js/firebase.js"></script>
 <script src="js/kakeibo-initial-data.js"></script>
 <script src="js/kakeibo.js"></script>
-<script>
-let currentYM = thisMonth(); // "2026-06"
-
-function ymLabel(ym) {
-  const [y, m] = ym.split("-");
-  return `${y}年${parseInt(m)}月`;
-}
-
-function changeMonth(delta) {
-  let [y, m] = currentYM.split("-").map(Number);
-  m += delta;
-  if (m > 12) { m = 1; y++; }
-  if (m < 1)  { m = 12; y--; }
-  currentYM = `${y}-${String(m).padStart(2,"0")}`;
-  render();
-}
-
-async function render() {
-  document.getElementById("monthTitle").textContent = ymLabel(currentYM);
-  document.getElementById("summary").innerHTML = '<div id="loading">読み込み中…</div>';
-  document.getElementById("breakdown").innerHTML = "";
-
-  const records = await fetchRecords(currentYM);
-  const [, m]   = currentYM.split("-");
-  const month   = parseInt(m);
-
-  const income  = records.filter(r => r.type === "収入").reduce((s,r) => s + Number(r.amount), 0);
-  const expense = records.filter(r => r.type === "支出").reduce((s,r) => s + Number(r.amount), 0);
-  const balance = income - expense;
-
-  document.getElementById("summary").innerHTML = `
-    <div class="summary-row"><span>収入</span><span class="summary-income">${fmt(income)}</span></div>
-    <div class="summary-row"><span>支出</span><span class="summary-expense">${fmt(expense)}</span></div>
-    <div class="summary-row"><span>収支</span><span class="summary-balance ${balance>=0?'plus':'minus'}">${balance>=0?'+':''}${fmt(balance)}</span></div>
-  `;
-
-  // 小項目別集計
-  const bySubcat = {};
-  records.filter(r => r.type === "支出").forEach(r => {
-    const k = r.subcategory || r.category;
-    bySubcat[k] = (bySubcat[k] || 0) + Number(r.amount);
-  });
-
-  const bd = document.getElementById("breakdown");
-  bd.innerHTML = `<h3 style="margin:12px 0 6px;font-size:15px;">小項目別の支出</h3>`;
-
-  if (Object.keys(bySubcat).length === 0) {
-    bd.innerHTML += `<p style="color:#999;font-size:14px;"></p>`;
-  } else {
-    const sec = document.createElement("div");
-    sec.className = "sub-section";
-    Object.entries(bySubcat)
-      .sort((a,b) => b[1]-a[1])
-      .forEach(([label, amount]) => {
-        sec.innerHTML += `<div class="sub-item"><span>${label}</span><span class="sub-amount">${fmt(amount)}</span></div>`;
-      });
-    bd.appendChild(sec);
-  }
-
-  // キャラセリフ（JSON）
-  // キャラセリフ（JSON）
-  let msg;
-
-  // 今月かどうか判定
-  const now = new Date();
-  const thisYM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
-
-  if (expense === 0 && income === 0) {
-    msg = await getMessage("kakeibo", "no_data", null, { month });
-  } else if (currentYM === thisYM) {
-    // ★ 今月はニュートラルコメント
-    msg = await getMessage("kakeibo", "balance_neutral", null, { month });
-  } else {
-    // ★ 前月以前は従来どおりポジティブ／ネガティブ
-    if (balance >= 0) {
-      msg = await getMessage("kakeibo", "balance_plus", null, { month, balance: fmt(balance) });
-    } else {
-      msg = await getMessage("kakeibo", "balance_minus", null, { month, balance: fmt(Math.abs(balance)) });
-    }
-  }
-
-  document.getElementById("bubble").innerHTML = msg.text;
-  setCharacterExpression(msg.expression);
-
-  }
-
-window.addEventListener("load", async () => {
-  render();
-});
-</script>
 </body>
 </html>

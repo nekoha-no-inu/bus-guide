@@ -61,7 +61,7 @@
   </select>
 
   <!-- ▼▼ 追加：大項目 ▼▼ -->
-  <select id="f-category" onchange="onFilterCategoryChange()">
+  <select id="f-category">
     <option value="">全大項目</option>
     <option>固定費</option>
     <option>変動費</option>
@@ -76,13 +76,13 @@
     <option value="">全小項目</option>
   </select>
 
-  <button class="filter-btn" onclick="loadList()">絞り込み</button>
+  <button id="filterBtn" class="filter-btn">絞り込み</button>
 </div>
 
 <div id="list"><div id="loading">読み込み中…</div></div>
 
 <!-- 編集モーダル -->
-<div id="modal-overlay" onclick="handleOverlayClick(event)">
+<div id="modal-overlay">
   <div id="modal">
     <h3 style="margin:0 0 10px;font-size:16px;">明細を編集</h3>
     <label>日付</label><input type="date" id="m-date">
@@ -105,9 +105,9 @@
       <option value="みほ">みほ</option>
     </select>
     <div class="modal-btns">
-      <button class="btn-save"   onclick="saveEdit()">💾 保存</button>
-      <button class="btn-delete" onclick="confirmDelete()">🗑 削除</button>
-      <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+      <button id="saveEditBtn" class="btn-save">💾 保存</button>
+      <button id="confirmDeleteBtn" class="btn-delete">🗑 削除</button>
+      <button id="closeModalBtn" class="btn-cancel">キャンセル</button>
     </div>
   </div>
 </div>
@@ -118,143 +118,5 @@
 <script src="js/common.js"></script>
 <script src="js/firebase.js"></script>
 <script src="js/kakeibo.js"></script>
-<script>
-let editingFirestoreId = null;
-
-// 初期月セット
-function setDefaultMonth() {
-  const now = new Date();
-  const p   = n => String(n).padStart(2,"0");
-  document.getElementById("f-month").value = `${now.getFullYear()}-${p(now.getMonth()+1)}`;
-}
-
-// リスト描画
-async function loadList() {
-  document.getElementById("list").innerHTML = '<div id="loading">読み込み中…</div>';
-
-  const filters = {
-    yearMonth:  document.getElementById("f-month").value || null,
-    type:       document.getElementById("f-type").value || null,
-    person:     document.getElementById("f-person").value || null,
-    category:   document.getElementById("f-category").value || null,
-    subcategory:document.getElementById("f-subcategory").value || null,
-  };
-
-  try {
-    const records = await fetchAllRecords(filters);
-
-    const list = document.getElementById("list");
-    list.innerHTML = "";
-
-    if (records.length === 0) {
-      list.innerHTML = "<p style='color:#999;font-size:14px;text-align:center;margin:20px 0;'>該当するデータはないよ。</p>";
-      document.getElementById("bubble").innerHTML =
-        (await getMessage("kakeibo","detail_empty")).text;
-      setCharacterExpression("relax");
-      return;
-    }
-
-    document.getElementById("bubble").innerHTML =
-      (await getMessage("kakeibo","detail_show", null, { count: records.length })).text;
-    setCharacterExpression("normal");
-    
-    records.forEach(r => {
-      const isExp = r.type === "支出";
-      const div = document.createElement("div");
-      div.className = "detail-item";
-      div.innerHTML = `
-        <div class="detail-top">
-          <div>
-            <div class="detail-date">${r.date}　${r.person}</div>
-            <div class="detail-desc">${r.description}</div>
-            <div class="detail-meta">${r.category}${r.subcategory ? " › " + r.subcategory : ""}</div>
-          </div>
-          <div class="detail-right">
-            <div class="detail-amount ${isExp?'expense':'income'}">${isExp?'−':'+'}${Number(r.amount).toLocaleString()}円</div>
-            <button class="edit-btn" onclick="openEdit('${r.firestoreId}')">✏️ 編集</button>
-          </div>
-        </div>
-      `;
-      list.appendChild(div);
-    });
-  } catch(e) {
-    document.getElementById("list").innerHTML = "<p style='color:#e74c3c;'>読み込みに失敗したよ。</p>";
-    console.error(e);
-  }
-}
-
-// 編集モーダルを開く
-function openEdit(firestoreId) {
-  // リスト中のデータからフォームに値をセット（再fetchを避けるため DOM から取得）
-  editingFirestoreId = firestoreId;
-  // 対応するカードのデータをDOMから読み取る代わりにFirestoreから取得
-  db.collection("kakeibo").doc(firestoreId).get().then(doc => {
-    if (!doc.exists) return;
-    const r = doc.data();
-    document.getElementById("m-date").value        = r.date;
-    document.getElementById("m-type").value        = r.type;
-    document.getElementById("m-category").value    = r.category;
-    document.getElementById("m-subcategory").value = r.subcategory || "";
-    document.getElementById("m-description").value = r.description;
-    document.getElementById("m-amount").value      = r.amount;
-    document.getElementById("m-person").value      = r.person;
-    document.getElementById("modal-overlay").style.display = "block";
-  });
-}
-
-function closeModal() {
-  document.getElementById("modal-overlay").style.display = "none";
-  editingFirestoreId = null;
-}
-
-function handleOverlayClick(e) {
-  if (e.target === document.getElementById("modal-overlay")) closeModal();
-}
-
-async function saveEdit() {
-  if (!editingFirestoreId) return;
-  const data = {
-    date:        document.getElementById("m-date").value,
-    type:        document.getElementById("m-type").value,
-    category:    document.getElementById("m-category").value,
-    subcategory: document.getElementById("m-subcategory").value,
-    description: document.getElementById("m-description").value,
-    amount:      parseInt(document.getElementById("m-amount").value, 10),
-    person:      document.getElementById("m-person").value,
-  };
-  try {
-    await updateRecord(editingFirestoreId, data);
-    closeModal();
-    document.getElementById("bubble").innerHTML = (await getMessage("kakeibo","edit_saved")).text;
-    setCharacterExpression("relax");
-    loadList();
-  } catch(e) {
-    document.getElementById("bubble").innerHTML = (await getMessage("kakeibo","edit_error")).text;
-    setCharacterExpression("hurry");
-    console.error(e);
-  }
-}
-
-async function confirmDelete() {
-  if (!editingFirestoreId) return;
-  if (!confirm("この項目を削除してもいい？")) return;
-  try {
-    await deleteRecordById(editingFirestoreId);
-    closeModal();
-    document.getElementById("bubble").innerHTML = (await getMessage("kakeibo","edit_deleted")).text;
-    setCharacterExpression("normal");
-    loadList();
-  } catch(e) {
-    document.getElementById("bubble").innerHTML = (await getMessage("kakeibo","edit_error")).text;
-    setCharacterExpression("hurry");
-    console.error(e);
-  }
-}
-
-window.addEventListener("load", async () => {
-  setDefaultMonth();
-  loadList();
-});
-</script>
 </body>
 </html>

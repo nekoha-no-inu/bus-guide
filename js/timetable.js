@@ -286,4 +286,5 @@ window.addEventListener("load", async () => {
   await loadAllCSV();
   setToday();
   buildRouteButtons();
+  document.getElementById("todayBtn").addEventListener("click", setToday);
 });

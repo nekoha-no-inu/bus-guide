@@ -80,7 +80,7 @@
     <button data-mode="新座駅→自宅">新座駅→自宅</button>
   </div>
 
-  <button onclick="searchBus()">🔍 検索</button>
+  <button id="searchBtn">🔍 検索</button>
 </div>
 
 <div id="dayTypeDisplay"></div>
@@ -90,10 +90,5 @@
 
 <script src="js/common.js"></script>
 <script src="js/transfer.js"></script>
-<script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js");
-  }
-</script>
 </body>
 </html>

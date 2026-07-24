@@ -105,3 +105,356 @@ function onFilterCategoryChange() {
     subSel.appendChild(op);
   });
 }
+
+// ---- kakeibo input page ----
+
+function setInputTypeState(type) {
+  const catSel = document.getElementById("f-category");
+  const subBlk = document.getElementById("subcategory-block");
+  if (!catSel || !subBlk) return;
+
+  if (type === "収入") {
+    catSel.innerHTML = `<option value="給与">給与</option><option value="臨時収入">臨時収入</option>`;
+    subBlk.style.display = "none";
+    getMessage("kakeibo", "input_income").then(m => {
+      document.getElementById("bubble").innerHTML = m.text;
+      setCharacterExpression(m.expression);
+    });
+  } else {
+    catSel.innerHTML = ["固定費", "変動費", "臨時出費", "旅費"]
+      .map(v => `<option value="${v}">${v}</option>`).join("");
+    subBlk.style.display = "block";
+    getMessage("kakeibo", "input_expense").then(m => {
+      document.getElementById("bubble").innerHTML = m.text;
+      setCharacterExpression(m.expression);
+    });
+  }
+}
+
+function onKakeiboInputTypeChange() {
+  const type = document.getElementById("f-type").value;
+  setInputTypeState(type);
+}
+
+async function submitKakeiboForm() {
+  const date   = document.getElementById("f-date").value;
+  const type   = document.getElementById("f-type").value;
+  const cat    = document.getElementById("f-category").value;
+  const subcat = type === "支出" ? document.getElementById("f-subcategory").value : "";
+  const desc   = document.getElementById("f-description").value.trim();
+  const amount = parseInt(document.getElementById("f-amount").value, 10);
+  const person = document.getElementById("f-person").value;
+
+  if (!date || !desc || !amount || isNaN(amount)) {
+    getMessage("kakeibo", "empty_input").then(m => {
+      document.getElementById("bubble").innerHTML = m.text;
+      setCharacterExpression(m.expression);
+    });
+    return;
+  }
+
+  try {
+    await addRecord({ type, date, category: cat, subcategory: subcat, description: desc, amount, person });
+    getMessage("kakeibo", "saved", null, {
+      description: desc,
+      amount: amount.toLocaleString()
+    }).then(m => {
+      document.getElementById("bubble").innerHTML = m.text;
+      setCharacterExpression(m.expression);
+    });
+    document.getElementById("f-description").value = "";
+    document.getElementById("f-amount").value      = "";
+    document.getElementById("f-date").value        = todayStr();
+  } catch (e) {
+    getMessage("kakeibo", "save_error").then(m => {
+      document.getElementById("bubble").innerHTML = m.text;
+      setCharacterExpression(m.expression);
+    });
+    console.error(e);
+  }
+}
+
+function initKakeiboInputPage() {
+  const typeEl    = document.getElementById("f-type");
+  const submitBtn = document.getElementById("submitBtn");
+  const backBtn   = document.getElementById("backBtn");
+
+  if (!typeEl || !submitBtn) return;
+
+  typeEl.addEventListener("change", onKakeiboInputTypeChange);
+  submitBtn.addEventListener("click", submitKakeiboForm);
+  if (backBtn) {
+    backBtn.addEventListener("click", () => {
+      window.location.href = "kakeibo.html";
+    });
+  }
+
+  document.getElementById("f-date").value = todayStr();
+  onKakeiboInputTypeChange();
+}
+
+// ---- kakeibo summary page ----
+
+let currentYM = thisMonth();
+
+function ymLabel(ym) {
+  const [y, m] = ym.split("-");
+  return `${y}年${parseInt(m, 10)}月`;
+}
+
+function changeMonth(delta) {
+  let [y, m] = currentYM.split("-").map(Number);
+  m += delta;
+  if (m > 12) { m = 1; y++; }
+  if (m < 1)  { m = 12; y--; }
+  currentYM = `${y}-${String(m).padStart(2, "0")}`;
+  renderKakeiboSummary();
+}
+
+async function renderKakeiboSummary() {
+  const monthTitle = document.getElementById("monthTitle");
+  const summary    = document.getElementById("summary");
+  const breakdown  = document.getElementById("breakdown");
+
+  if (!monthTitle || !summary || !breakdown) return;
+
+  monthTitle.textContent = ymLabel(currentYM);
+  summary.innerHTML = '<div id="loading">読み込み中…</div>';
+  breakdown.innerHTML = "";
+
+  const records = await fetchRecords(currentYM);
+  const [, m]   = currentYM.split("-");
+  const month   = parseInt(m, 10);
+
+  const income  = records.filter(r => r.type === "収入").reduce((s, r) => s + Number(r.amount), 0);
+  const expense = records.filter(r => r.type === "支出").reduce((s, r) => s + Number(r.amount), 0);
+  const balance = income - expense;
+
+  summary.innerHTML = `
+    <div class="summary-row"><span>収入</span><span class="summary-income">${fmt(income)}</span></div>
+    <div class="summary-row"><span>支出</span><span class="summary-expense">${fmt(expense)}</span></div>
+    <div class="summary-row"><span>収支</span><span class="summary-balance ${balance >= 0 ? 'plus' : 'minus'}">${balance >= 0 ? '+' : ''}${fmt(balance)}</span></div>
+  `;
+
+  const bySubcat = {};
+  records.filter(r => r.type === "支出").forEach(r => {
+    const k = r.subcategory || r.category;
+    bySubcat[k] = (bySubcat[k] || 0) + Number(r.amount);
+  });
+
+  breakdown.innerHTML = `<h3 style="margin:12px 0 6px;font-size:15px;">小項目別の支出</h3>`;
+
+  if (Object.keys(bySubcat).length === 0) {
+    breakdown.innerHTML += `<p style="color:#999;font-size:14px;"></p>`;
+  } else {
+    const sec = document.createElement("div");
+    sec.className = "sub-section";
+    Object.entries(bySubcat)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([label, amount]) => {
+        sec.innerHTML += `<div class="sub-item"><span>${label}</span><span class="sub-amount">${fmt(amount)}</span></div>`;
+      });
+    breakdown.appendChild(sec);
+  }
+
+  let msg;
+  const now = new Date();
+  const thisYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  if (income === 0 && expense === 0) {
+    msg = await getMessage("kakeibo", "no_data", null, { month });
+  } else if (currentYM === thisYM) {
+    msg = await getMessage("kakeibo", "balance_neutral", null, { month });
+  } else {
+    if (balance >= 0) {
+      msg = await getMessage("kakeibo", "balance_plus", null, { month, balance: fmt(balance) });
+    } else {
+      msg = await getMessage("kakeibo", "balance_minus", null, { month, balance: fmt(Math.abs(balance)) });
+    }
+  }
+
+  document.getElementById("bubble").innerHTML = msg.text;
+  setCharacterExpression(msg.expression);
+}
+
+function initKakeiboSummaryPage() {
+  const prevBtn = document.getElementById("prevMonthBtn");
+  const nextBtn = document.getElementById("nextMonthBtn");
+
+  if (!prevBtn || !nextBtn) return;
+
+  prevBtn.addEventListener("click", () => changeMonth(-1));
+  nextBtn.addEventListener("click", () => changeMonth(1));
+  renderKakeiboSummary();
+}
+
+// ---- kakeibo detail page ----
+
+let editingFirestoreId = null;
+
+function setDefaultMonth() {
+  const now = new Date();
+  const p   = n => String(n).padStart(2, "0");
+  const monthInput = document.getElementById("f-month");
+  if (monthInput) {
+    monthInput.value = `${now.getFullYear()}-${p(now.getMonth() + 1)}`;
+  }
+}
+
+async function loadKakeiboDetailList() {
+  const list = document.getElementById("list");
+  if (!list) return;
+
+  list.innerHTML = '<div id="loading">読み込み中…</div>';
+
+  const filters = {
+    yearMonth:  document.getElementById("f-month").value || null,
+    type:       document.getElementById("f-type").value || null,
+    person:     document.getElementById("f-person").value || null,
+    category:   document.getElementById("f-category").value || null,
+    subcategory:document.getElementById("f-subcategory").value || null,
+  };
+
+  try {
+    const records = await fetchAllRecords(filters);
+    list.innerHTML = "";
+
+    if (records.length === 0) {
+      list.innerHTML = "<p style='color:#999;font-size:14px;text-align:center;margin:20px 0;'>該当するデータはないよ。</p>";
+      const msg = await getMessage("kakeibo", "detail_empty");
+      document.getElementById("bubble").innerHTML = msg.text;
+      setCharacterExpression("relax");
+      return;
+    }
+
+    const msg = await getMessage("kakeibo", "detail_show", null, { count: records.length });
+    document.getElementById("bubble").innerHTML = msg.text;
+    setCharacterExpression("normal");
+
+    records.forEach(r => {
+      const isExp = r.type === "支出";
+      const div = document.createElement("div");
+      div.className = "detail-item";
+      div.innerHTML = `
+        <div class="detail-top">
+          <div>
+            <div class="detail-date">${r.date}　${r.person}</div>
+            <div class="detail-desc">${r.description}</div>
+            <div class="detail-meta">${r.category}${r.subcategory ? " › " + r.subcategory : ""}</div>
+          </div>
+          <div class="detail-right">
+            <div class="detail-amount ${isExp ? 'expense' : 'income'}">${isExp ? '−' : '+'}${Number(r.amount).toLocaleString()}円</div>
+            <button class="edit-btn" data-id="${r.firestoreId}">✏️ 編集</button>
+          </div>
+        </div>
+      `;
+      list.appendChild(div);
+    });
+  } catch (e) {
+    list.innerHTML = "<p style='color:#e74c3c;'>読み込みに失敗したよ。</p>";
+    console.error(e);
+  }
+}
+
+function openEdit(firestoreId) {
+  editingFirestoreId = firestoreId;
+  db.collection("kakeibo").doc(firestoreId).get().then(doc => {
+    if (!doc.exists) return;
+    const r = doc.data();
+    document.getElementById("m-date").value        = r.date;
+    document.getElementById("m-type").value        = r.type;
+    document.getElementById("m-category").value    = r.category;
+    document.getElementById("m-subcategory").value = r.subcategory || "";
+    document.getElementById("m-description").value = r.description;
+    document.getElementById("m-amount").value      = r.amount;
+    document.getElementById("m-person").value      = r.person;
+    document.getElementById("modal-overlay").style.display = "block";
+  });
+}
+
+function closeModal() {
+  document.getElementById("modal-overlay").style.display = "none";
+  editingFirestoreId = null;
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById("modal-overlay")) closeModal();
+}
+
+async function saveEdit() {
+  if (!editingFirestoreId) return;
+  const data = {
+    date:        document.getElementById("m-date").value,
+    type:        document.getElementById("m-type").value,
+    category:    document.getElementById("m-category").value,
+    subcategory: document.getElementById("m-subcategory").value,
+    description: document.getElementById("m-description").value,
+    amount:      parseInt(document.getElementById("m-amount").value, 10),
+    person:      document.getElementById("m-person").value,
+  };
+  try {
+    await updateRecord(editingFirestoreId, data);
+    closeModal();
+    const msg = await getMessage("kakeibo", "edit_saved");
+    document.getElementById("bubble").innerHTML = msg.text;
+    setCharacterExpression("relax");
+    loadKakeiboDetailList();
+  } catch (e) {
+    const msg = await getMessage("kakeibo", "edit_error");
+    document.getElementById("bubble").innerHTML = msg.text;
+    setCharacterExpression("hurry");
+    console.error(e);
+  }
+}
+
+async function confirmDelete() {
+  if (!editingFirestoreId) return;
+  if (!confirm("この項目を削除してもいい？")) return;
+  try {
+    await deleteRecordById(editingFirestoreId);
+    closeModal();
+    const msg = await getMessage("kakeibo", "edit_deleted");
+    document.getElementById("bubble").innerHTML = msg.text;
+    setCharacterExpression("normal");
+    loadKakeiboDetailList();
+  } catch (e) {
+    const msg = await getMessage("kakeibo", "edit_error");
+    document.getElementById("bubble").innerHTML = msg.text;
+    setCharacterExpression("hurry");
+    console.error(e);
+  }
+}
+
+function initKakeiboDetailPage() {
+  const filterBtn = document.getElementById("filterBtn");
+  const fCategory = document.getElementById("f-category");
+  const listEl = document.getElementById("list");
+  const modalOverlay = document.getElementById("modal-overlay");
+  const saveBtn = document.getElementById("saveEditBtn");
+  const deleteBtn = document.getElementById("confirmDeleteBtn");
+  const closeBtn = document.getElementById("closeModalBtn");
+
+  if (!filterBtn || !listEl) return;
+
+  filterBtn.addEventListener("click", loadKakeiboDetailList);
+  if (fCategory) fCategory.addEventListener("change", onFilterCategoryChange);
+  listEl.addEventListener("click", e => {
+    const btn = e.target.closest(".edit-btn");
+    if (btn) {
+      openEdit(btn.dataset.id);
+    }
+  });
+  if (modalOverlay) modalOverlay.addEventListener("click", handleOverlayClick);
+  if (saveBtn) saveBtn.addEventListener("click", saveEdit);
+  if (deleteBtn) deleteBtn.addEventListener("click", confirmDelete);
+  if (closeBtn) closeBtn.addEventListener("click", closeModal);
+
+  setDefaultMonth();
+  loadKakeiboDetailList();
+}
+
+window.addEventListener("load", () => {
+  initKakeiboInputPage();
+  initKakeiboSummaryPage();
+  initKakeiboDetailPage();
+});

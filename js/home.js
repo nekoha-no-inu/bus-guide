@@ -34,9 +34,52 @@ function getTimeZone() {
   return "night";
 }
 
+// ---- 最終更新取得 ----
+
+async function loadLastUpdate() {
+  try {
+    const res = await fetch("https://api.github.com/repos/nekoha-no-inu/bus-guide/commits/main");
+    const data = await res.json();
+
+    const date = new Date(data.commit.committer.date);
+    const formatted =
+      `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日 `
+      + `${date.getHours()}時${date.getMinutes()}分`;
+
+    document.getElementById("lastUpdate").innerText =
+      `最終更新：${formatted}`;
+  } catch (e) {
+    document.getElementById("lastUpdate").innerText =
+      "最終更新：取得できませんでした";
+  }
+}
+
 // ---- セリフ表示 ----
 
+function getStoredHomeReminder() {
+  try {
+    const raw = localStorage.getItem("homeReminder");
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || Date.now() > data.expiresAt) {
+      localStorage.removeItem("homeReminder");
+      return null;
+    }
+    return data;
+  } catch (e) {
+    console.warn("Failed to read stored home reminder:", e);
+    return null;
+  }
+}
+
 async function loadHomeMessage() {
+  const reminder = getStoredHomeReminder();
+  if (reminder) {
+    document.getElementById("bubble").innerHTML = reminder.text;
+    setCharacterExpression(reminder.expression);
+    return;
+  }
+
   const zone    = getTimeZone();
   const weather = await getWeather();
   const msg     = await getMessage("home", zone, weather);
@@ -47,9 +90,27 @@ async function loadHomeMessage() {
 
 // ---- ページ読み込み ----
 
-window.addEventListener("load", () => {
+window.addEventListener("load", async () => {
   initCharacterImage();
   updateDateTime();
   setInterval(updateDateTime, 60_000);
-  loadHomeMessage();
+
+  const character = document.getElementById("character");
+  if (character) {
+    character.addEventListener("click", nextHomeTalk);
+  }
+
+  try {
+    await loadLastUpdate();
+  } catch (e) {
+    console.error("Failed to load last update:", e);
+  }
+
+  try {
+    await loadHomeMessage();
+  } catch (e) {
+    console.error("Failed to load home message:", e);
+    document.getElementById("bubble").innerText = "メッセージを取得できませんでした。";
+    setCharacterExpression("normal");
+  }
 });

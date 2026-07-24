@@ -20,7 +20,7 @@
 <input type="date" id="f-date">
 
 <label>種別</label>
-<select id="f-type" onchange="onTypeChange()">
+<select id="f-type">
   <option value="支出">支出</option>
   <option value="収入">収入</option>
 </select>
@@ -56,8 +56,8 @@
   <option value="みほ">みほ</option>
 </select>
 
-<button onclick="submitRecord()">✅ 決定</button>
-<button onclick="location.href='kakeibo.html'" style="background:#999;border:none;color:#fff;border-radius:8px;padding:12px;width:100%;margin-top:6px;font-size:16px;cursor:pointer;">戻る</button>
+<button id="submitBtn">✅ 決定</button>
+<button id="backBtn" style="background:#999;border:none;color:#fff;border-radius:8px;padding:12px;width:100%;margin-top:6px;font-size:16px;cursor:pointer;">戻る</button>
 
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -66,61 +66,5 @@
 <script src="js/firebase.js"></script>
 <script src="js/kakeibo-initial-data.js"></script>
 <script src="js/kakeibo.js"></script>
-<script>
-function onTypeChange() {
-  const type   = document.getElementById("f-type").value;
-  const catSel = document.getElementById("f-category");
-  const subBlk = document.getElementById("subcategory-block");
-
-  if (type === "収入") {
-    catSel.innerHTML = `<option value="給与">給与</option><option value="臨時収入">臨時収入</option>`;
-    subBlk.style.display = "none";
-    getMessage("kakeibo","input_income").then(m=>{document.getElementById("bubble").innerHTML=m.text;setCharacterExpression(m.expression)});
-  } else {
-    catSel.innerHTML = ["固定費","変動費","臨時出費","旅費"]
-      .map(v => `<option value="${v}">${v}</option>`).join("");
-    subBlk.style.display = "block";
-    getMessage("kakeibo","input_expense").then(m=>{document.getElementById("bubble").innerHTML=m.text;setCharacterExpression(m.expression)});
-  }
-}
-
-async function submitRecord() {
-  const date   = document.getElementById("f-date").value;
-  const type   = document.getElementById("f-type").value;
-  const cat    = document.getElementById("f-category").value;
-  const subcat = type === "支出" ? document.getElementById("f-subcategory").value : "";
-  const desc   = document.getElementById("f-description").value.trim();
-  const amount = parseInt(document.getElementById("f-amount").value, 10);
-  const person = document.getElementById("f-person").value;
-
-  if (!date || !desc || !amount || isNaN(amount)) {
-    getMessage("kakeibo","empty_input").then(m=>{document.getElementById("bubble").innerHTML=m.text;setCharacterExpression(m.expression)});
-    return;
-  }
-
-  
-
-  try {
-    await addRecord({ type, date, category: cat, subcategory: subcat, description: desc, amount, person });
-    getMessage("kakeibo","saved", null, {
-      description: desc,
-      amount: amount.toLocaleString()
-    }).then(m=>{
-      document.getElementById("bubble").innerHTML = m.text;
-      setCharacterExpression(m.expression);
-    });
-    document.getElementById("f-description").value = "";
-    document.getElementById("f-amount").value      = "";
-    document.getElementById("f-date").value        = todayStr();
-  } catch(e) {
-    getMessage("kakeibo","save_error").then(m=>{document.getElementById("bubble").innerHTML=m.text;setCharacterExpression(m.expression)});
-    console.error(e);
-  }
-}
-
-window.addEventListener("load", () => {
-  document.getElementById("f-date").value = todayStr();
-});
-</script>
 </body>
 </html>

@@ -19,7 +19,7 @@
 
 <label>日付：</label>
 <input type="date" id="dateInput">
-<button onclick="setToday()">今日</button>
+<button id="todayBtn">今日</button>
 
 <div id="routeButtons"></div>
 
@@ -28,10 +28,5 @@
 
 <script src="js/common.js"></script>
 <script src="js/timetable.js"></script>
-<script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js");
-  }
-</script>
 </body>
 </html>

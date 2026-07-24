@@ -24,7 +24,7 @@ function changeCity(cityKey) {
   currentCity = cityKey;
 
   document.querySelectorAll("#cityButtons button").forEach(btn => btn.classList.remove("active"));
-  const activeBtn = document.querySelector(`#cityButtons button[onclick="changeCity('${cityKey}')"]`);
+  const activeBtn = document.querySelector(`#cityButtons button[data-city="${cityKey}"]`);
   if (activeBtn) activeBtn.classList.add("active");
 
   loadWeather();
@@ -119,4 +119,9 @@ async function loadWeather() {
 
 // ---- 初期化 ----
 
-window.addEventListener("load", loadWeather);
+window.addEventListener("load", () => {
+  document.querySelectorAll("#cityButtons button").forEach(btn => {
+    btn.addEventListener("click", () => changeCity(btn.dataset.city));
+  });
+  loadWeather();
+});

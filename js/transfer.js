@@ -1,7 +1,6 @@
 // ======================================
 // transfer.js  ─  バス乗り換え案内
 // ======================================
-console.log("transfer.js loaded");
 
 const HOLIDAY_API =
   "https://www.googleapis.com/calendar/v3/calendars/japanese__ja@holiday.calendar.google.com/events?key=AIzaSyCCQB3KoCaFIvG1Wf8xy7y03d1ACHjqpsU";
@@ -98,27 +97,27 @@ function urgency(minutes) {
 async function speak(c, isFromHome, label) {
   const dt       = new Date(document.getElementById("datetime").value);
   const startMin = dt.getHours() * 60 + dt.getMinutes();
-  const diff      = toMin(c.depart) - startMin;
-  const leaveDiff = diff - c.walk;
+  const departDiff = toMin(c.depart) - startMin;
+  const boardDiff = isFromHome ? Math.max(0, departDiff - c.walk) : Math.max(0, departDiff);
 
-  // 自宅到着時刻（バス降車時刻 + 徒歩時間）
+  // 家に着く時刻（バス停到着時刻 + 家までの徒歩時間）
   const homeArrive = toTime(toMin(c.arrive) + c.walk);
 
   const vars = {
     line:        c.line,
     stop:        c.stop,
     depart:      c.depart,
-    arrive:      c.arrive,      // バス降車時刻（駅着 or バス停着）
-    homeArrive,                 // 自宅到着時刻（toHome のみ使用）
-    diff,
-    leaveDiff,
+    arrive:      c.arrive,
+    homeArrive,
+    diff: departDiff,
+    leaveDiff: boardDiff,
   };
 
   let key2;
   if (label === "next" || label === "prev") {
     key2 = label;
   } else {
-    key2 = urgency(isFromHome ? leaveDiff : diff);
+    key2 = urgency(boardDiff);
   }
 
   const key1 = isFromHome ? "fromHome" : "toHome";
@@ -136,34 +135,55 @@ async function speak(c, isFromHome, label) {
 
 // ---- 候補を全件取得 ----
 
+function getDepartureThreshold(route, startMin, isFromHome) {
+  // 家→駅: 家からバス停までの徒歩時間を考慮して候補化
+  // 駅→家: バス停での発車時刻だけを基準に候補化
+  return isFromHome ? startMin + Number(route.walk_min) : startMin;
+}
+
+function buildCandidateFromRoute(route, schedule, isFromHome) {
+  const departMin = toMin(schedule.depart_time);
+  const rideMin   = Number(route.ride_min);
+  const walkMin   = Number(route.walk_min);
+  const arriveMin = departMin + rideMin;
+  const finishMin = isFromHome ? arriveMin : arriveMin + walkMin;
+
+  return {
+    line:      route.line,
+    group:     grp(route.line),
+    stop:      route.stop,
+    getoff:    route.getoff,
+    depart:    schedule.depart_time,
+    arrive:    toTime(arriveMin),
+    walk:      walkMin,
+    ride:      rideMin,
+    finishMin,
+  };
+}
+
 function buildAllCandidates(mode, dayType, startMin) {
   console.log("=== buildAllCandidates START ===");
   console.log("mode:", mode, "dayType:", dayType, "startMin:", startMin);
-  const isLate = startMin >= 23 * 60;
+
+  const isFromHome = mode.startsWith("自宅→");
+
   return routes
     .filter(r => r.mode === mode)
     .flatMap(r => {
       console.log("---- checking route:", r);
-      const walkArrive = startMin + Number(r.walk_min);
-      console.log("walkArrive:", walkArrive);
+      const departAfter = getDepartureThreshold(r, startMin, isFromHome);
+      console.log("departAfter:", departAfter);
 
       return schedules
         .filter(s =>
           s.route === r.line && s.stop === r.stop &&
           s.direction === r.direction && s.day_type === dayType &&
-          toMin(s.depart_time) >= walkArrive
+          toMin(s.depart_time) >= departAfter
         )
-        .map(s => ({
-          line:   r.line, group: grp(r.line),
-          stop:   r.stop, getoff: r.getoff,
-          depart: s.depart_time,
-          arrive: toTime(toMin(s.depart_time) + Number(r.ride_min)),
-          walk:   Number(r.walk_min),
-          ride:   Number(r.ride_min),
-        }));
+        .map(s => buildCandidateFromRoute(r, s, isFromHome));
     })
     .sort((a, b) =>
-      toMin(a.arrive) - toMin(b.arrive) || toMin(a.depart) - toMin(b.depart)
+      a.finishMin - b.finishMin || toMin(a.depart) - toMin(b.depart)
     );
 }
 
@@ -186,7 +206,7 @@ function buildGroupBestFromAll(allCandidates, baseMin) {
     })
     .forEach(c => {
       const g = grp(c.line);
-      if (!best[g] || toMin(c.arrive) < toMin(best[g].arrive)) {
+      if (!best[g] || c.finishMin < best[g].finishMin) {
         best[g] = c;
       }
     });
@@ -344,9 +364,6 @@ async function showNextBus() {
 // ---- 初期化 ----
 
 window.addEventListener("load", async () => {
-  window.addEventListener("load", () => {
-    console.log("window loaded");
-  });
   document.getElementById("bubble").innerHTML = "行き先と日時を選んで検索してね！";
   await Promise.all([loadCSV(), loadHolidays()]);
   document.getElementById("datetime").value = fmtDTL(new Date());
@@ -360,6 +377,7 @@ window.addEventListener("load", async () => {
   document.getElementById("nowButton").addEventListener("click", () => {
     document.getElementById("datetime").value = fmtDTL(new Date());
   });
+  document.getElementById("searchBtn").addEventListener("click", searchBus);
   document.getElementById("prevBtn").addEventListener("click", showPrevBus);
   document.getElementById("nextBtn").addEventListener("click", showNextBus);
 });
