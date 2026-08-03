@@ -202,6 +202,76 @@ function ymLabel(ym) {
   return `${y}年${parseInt(m, 10)}月`;
 }
 
+function getChartColor(index) {
+  const palette = [
+    "#4a90e2", "#2a9d8f", "#f4a261", "#e76f51", "#6a4c93", "#3a86ff",
+    "#43aa8b", "#f94144", "#f8961e", "#577590", "#8ac926", "#ff595e"
+  ];
+  return palette[index % palette.length];
+}
+
+function renderSubcategoryChart(bySubcat) {
+  const chartRoot = document.getElementById("summaryChart");
+  if (!chartRoot) return;
+
+  const entries = Object.entries(bySubcat)
+    .filter(([, amount]) => Number(amount) > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  if (entries.length === 0) {
+    chartRoot.innerHTML = '<div class="summary-chart-placeholder">支出データがありません</div>';
+    return;
+  }
+
+  const total = entries.reduce((sum, [, amount]) => sum + Number(amount), 0);
+  let acc = 0;
+
+  const radius = 62;
+  const center = 80;
+
+  const slices = entries.map(([label, amount], idx) => {
+    const value = Number(amount);
+    const ratio = value / total;
+    const start = acc;
+    const end = acc + ratio;
+    acc = end;
+
+    const startAngle = start * Math.PI * 2 - Math.PI / 2;
+    const endAngle = end * Math.PI * 2 - Math.PI / 2;
+    const x1 = center + radius * Math.cos(startAngle);
+    const y1 = center + radius * Math.sin(startAngle);
+    const x2 = center + radius * Math.cos(endAngle);
+    const y2 = center + radius * Math.sin(endAngle);
+    const largeArc = ratio > 0.5 ? 1 : 0;
+    const color = getChartColor(idx);
+
+    const path = ratio >= 0.9999
+      ? `<circle cx="${center}" cy="${center}" r="${radius}" fill="${color}"></circle>`
+      : `<path d="M ${center} ${center} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${radius} ${radius} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z" fill="${color}"></path>`;
+
+    return { label, value, ratio, color, path };
+  });
+
+  const svg = `
+    <svg viewBox="0 0 160 160" width="160" height="160" aria-label="小項目別の支出円グラフ">
+      ${slices.map(s => s.path).join("")}
+      <circle cx="${center}" cy="${center}" r="34" fill="#fff"></circle>
+      <text x="${center}" y="${center - 2}" text-anchor="middle" font-size="11" fill="#666">支出合計</text>
+      <text x="${center}" y="${center + 14}" text-anchor="middle" font-size="12" fill="#333" font-weight="bold">${fmt(total)}</text>
+    </svg>
+  `;
+
+  const legend = slices.map(s => `
+    <div class="summary-chart-legend-item">
+      <span class="summary-chart-color" style="background:${s.color}"></span>
+      <span>${s.label}</span>
+      <span class="summary-chart-percent">${Math.round(s.ratio * 100)}%</span>
+    </div>
+  `).join("");
+
+  chartRoot.innerHTML = `${svg}<div class="summary-chart-legend">${legend}</div>`;
+}
+
 function changeMonth(delta) {
   let [y, m] = currentYM.split("-").map(Number);
   m += delta;
@@ -241,6 +311,8 @@ async function renderKakeiboSummary() {
     const k = r.subcategory || r.category;
     bySubcat[k] = (bySubcat[k] || 0) + Number(r.amount);
   });
+
+  renderSubcategoryChart(bySubcat);
 
   breakdown.innerHTML = `<h3 style="margin:12px 0 6px;font-size:15px;">小項目別の支出</h3>`;
 
