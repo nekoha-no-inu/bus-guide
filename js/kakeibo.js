@@ -117,7 +117,7 @@ function setInputTypeState(type) {
     catSel.innerHTML = `<option value="給与">給与</option><option value="臨時収入">臨時収入</option>`;
     subBlk.style.display = "none";
     getMessage("kakeibo", "input_income").then(m => {
-      document.getElementById("bubble").innerHTML = m.text;
+      setBubbleSpeech(m.text);
       setCharacterExpression(m.expression);
     });
   } else {
@@ -125,7 +125,7 @@ function setInputTypeState(type) {
       .map(v => `<option value="${v}">${v}</option>`).join("");
     subBlk.style.display = "block";
     getMessage("kakeibo", "input_expense").then(m => {
-      document.getElementById("bubble").innerHTML = m.text;
+      setBubbleSpeech(m.text);
       setCharacterExpression(m.expression);
     });
   }
@@ -147,7 +147,7 @@ async function submitKakeiboForm() {
 
   if (!date || !desc || !amount || isNaN(amount)) {
     getMessage("kakeibo", "empty_input").then(m => {
-      document.getElementById("bubble").innerHTML = m.text;
+      setBubbleSpeech(m.text);
       setCharacterExpression(m.expression);
     });
     return;
@@ -159,7 +159,7 @@ async function submitKakeiboForm() {
       description: desc,
       amount: amount.toLocaleString()
     }).then(m => {
-      document.getElementById("bubble").innerHTML = m.text;
+      setBubbleSpeech(m.text);
       setCharacterExpression(m.expression);
     });
     document.getElementById("f-description").value = "";
@@ -167,7 +167,7 @@ async function submitKakeiboForm() {
     document.getElementById("f-date").value        = todayStr();
   } catch (e) {
     getMessage("kakeibo", "save_error").then(m => {
-      document.getElementById("bubble").innerHTML = m.text;
+      setBubbleSpeech(m.text);
       setCharacterExpression(m.expression);
     });
     console.error(e);
@@ -273,7 +273,7 @@ async function renderKakeiboSummary() {
     }
   }
 
-  document.getElementById("bubble").innerHTML = msg.text;
+  setBubbleSpeech(msg.text);
   setCharacterExpression(msg.expression);
 }
 
@@ -322,13 +322,13 @@ async function loadKakeiboDetailList() {
     if (records.length === 0) {
       list.innerHTML = "<p style='color:#999;font-size:14px;text-align:center;margin:20px 0;'>該当するデータはないよ。</p>";
       const msg = await getMessage("kakeibo", "detail_empty");
-      document.getElementById("bubble").innerHTML = msg.text;
+      setBubbleSpeech(msg.text);
       setCharacterExpression("relax");
       return;
     }
 
     const msg = await getMessage("kakeibo", "detail_show", null, { count: records.length });
-    document.getElementById("bubble").innerHTML = msg.text;
+    setBubbleSpeech(msg.text);
     setCharacterExpression("normal");
 
     records.forEach(r => {
@@ -396,12 +396,12 @@ async function saveEdit() {
     await updateRecord(editingFirestoreId, data);
     closeModal();
     const msg = await getMessage("kakeibo", "edit_saved");
-    document.getElementById("bubble").innerHTML = msg.text;
+    setBubbleSpeech(msg.text);
     setCharacterExpression("relax");
     loadKakeiboDetailList();
   } catch (e) {
     const msg = await getMessage("kakeibo", "edit_error");
-    document.getElementById("bubble").innerHTML = msg.text;
+    setBubbleSpeech(msg.text);
     setCharacterExpression("hurry");
     console.error(e);
   }
@@ -414,12 +414,12 @@ async function confirmDelete() {
     await deleteRecordById(editingFirestoreId);
     closeModal();
     const msg = await getMessage("kakeibo", "edit_deleted");
-    document.getElementById("bubble").innerHTML = msg.text;
+    setBubbleSpeech(msg.text);
     setCharacterExpression("normal");
     loadKakeiboDetailList();
   } catch (e) {
     const msg = await getMessage("kakeibo", "edit_error");
-    document.getElementById("bubble").innerHTML = msg.text;
+    setBubbleSpeech(msg.text);
     setCharacterExpression("hurry");
     console.error(e);
   }

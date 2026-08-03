@@ -51,7 +51,7 @@ function getWeekSchedule() {
 async function loadGarbageMessage(todayItems) {
   const type = todayItems.length > 0 ? "has" : "none";
   const msg  = await getMessage("garbage", type);
-  document.getElementById("bubble").innerHTML = msg.text;
+  setBubbleSpeech(msg.text);
   setCharacterExpression(msg.expression);
 }
 

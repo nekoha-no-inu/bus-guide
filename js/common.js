@@ -36,10 +36,101 @@ function setCharacterExpression(type) {
   img.src = `img/character_${VALID.includes(type) ? type : "normal"}.png`;
 }
 
+// ---- 吹き出しタイプライター ----
+
+const SPEECH_TYPING_MS = 35;
+let _speechTypingTimer = null;
+let _speechTypingToken = 0;
+let _speechLastText = null;
+
+function _speechHtmlToText(raw) {
+  const withBreaks = String(raw ?? "")
+    .replace(/<br\s*\/?\s*>/gi, "\n")
+    .replace(/<\/p>\s*<p>/gi, "\n\n");
+
+  const withoutTags = withBreaks.replace(/<[^>]+>/g, "");
+  const decoder = document.createElement("textarea");
+  decoder.innerHTML = withoutTags;
+  return decoder.value;
+}
+
+function _fixBubbleSizeForText(bubble, text) {
+  if (!text || text.length === 0) {
+    bubble.style.width = "";
+    bubble.style.minHeight = "";
+    return;
+  }
+
+  const probe = bubble.cloneNode(false);
+  const computed = window.getComputedStyle(bubble);
+
+  probe.style.position = "absolute";
+  probe.style.visibility = "hidden";
+  probe.style.pointerEvents = "none";
+  probe.style.left = "-99999px";
+  probe.style.top = "0";
+  probe.style.width = "auto";
+  probe.style.minHeight = "0";
+  probe.style.height = "auto";
+  probe.style.whiteSpace = computed.whiteSpace;
+  probe.textContent = text;
+
+  document.body.appendChild(probe);
+  const rect = probe.getBoundingClientRect();
+  document.body.removeChild(probe);
+
+  bubble.style.width = `${Math.ceil(rect.width)}px`;
+  bubble.style.minHeight = `${Math.ceil(rect.height)}px`;
+}
+
+function _renderSpeechText(nextText, force = false, instant = false) {
+  const bubble = document.getElementById("bubble");
+  if (!bubble) return;
+
+  if (!force && nextText === _speechLastText) return;
+  _speechLastText = nextText;
+
+  _speechTypingToken += 1;
+  const token = _speechTypingToken;
+  if (_speechTypingTimer) clearTimeout(_speechTypingTimer);
+
+  const prefersReduce =
+    !!window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  _fixBubbleSizeForText(bubble, nextText);
+
+  if (instant || prefersReduce || nextText.length === 0) {
+    bubble.textContent = nextText;
+    return;
+  }
+
+  let i = 0;
+  bubble.textContent = "";
+
+  const step = () => {
+    if (token !== _speechTypingToken) return;
+
+    i += 1;
+    bubble.textContent = nextText.slice(0, i);
+
+    if (i < nextText.length) {
+      _speechTypingTimer = setTimeout(step, SPEECH_TYPING_MS);
+    } else {
+      _speechTypingTimer = null;
+    }
+  };
+
+  step();
+}
+
+function setBubbleSpeech(text, options = {}) {
+  const nextText = _speechHtmlToText(text);
+  _renderSpeechText(nextText, true, options.instant === true);
+}
+
 /** キャラクターのセリフと表情を同時に更新する */
 function setCharacterSpeech(text, expression = "normal") {
-  const bubble = document.getElementById("bubble");
-  if (bubble) bubble.textContent = text;
+  setBubbleSpeech(text);
   setCharacterExpression(expression);
 }
 
@@ -70,8 +161,28 @@ async function getMessage(page, key1, key2 = null, vars = {}) {
 
   if (key2 && data[page]?.[key1]?.[key2]) {
     list = data[page][key1][key2];
-  } else if (data[page]?.[key1]) {
-    list = data[page][key1];
+  }
+
+  if (!list && key2 && data[page]?.[key1]) {
+    const fallback = data[page][key1];
+    if (Array.isArray(fallback)) {
+      list = fallback;
+    } else if (fallback?.sunny) {
+      list = fallback.sunny;
+    } else {
+      const values = Object.values(fallback).filter(Array.isArray);
+      list = values.length > 0 ? values[0] : undefined;
+    }
+  }
+
+  if (!list && data[page]?.[key1]) {
+    const source = data[page][key1];
+    if (Array.isArray(source)) {
+      list = source;
+    } else if (typeof source === "object" && source !== null) {
+      const values = Object.values(source).filter(Array.isArray);
+      list = values.length > 0 ? values[0] : undefined;
+    }
   }
 
   if (!Array.isArray(list) || list.length === 0) {
@@ -131,14 +242,14 @@ async function nextHomeTalk() {
 
   const talks = data.home.homeTalk;
   const msg   = talks[_homeTalkIndex];
-  document.getElementById("bubble").innerHTML = msg.text;
+  setBubbleSpeech(msg.text);
   setCharacterExpression(msg.expression);
   _homeTalkIndex = (_homeTalkIndex + 1) % talks.length;
 }
 
 function _showReaction(list) {
   const msg = list[Math.floor(Math.random() * list.length)];
-  document.getElementById("bubble").innerHTML = msg.text;
+  setBubbleSpeech(msg.text);
   setCharacterExpression(msg.expression);
 }
 

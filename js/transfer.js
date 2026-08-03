@@ -128,8 +128,7 @@ async function speak(c, isFromHome, label) {
     ? (await getTransferMsg("walkLong", null)).text
     : "";
 
-  const bubble = document.getElementById("bubble");
-  bubble.innerHTML = msg.text + (walkNote ? `<br>${walkNote}` : "");
+  setBubbleSpeech(msg.text + (walkNote ? `<br>${walkNote}` : ""));
   setCharacterExpression(msg.expression);
 }
 
@@ -302,7 +301,7 @@ async function searchBus() {
 
   const datetime = document.getElementById("datetime").value;
   if (!datetime) {
-    document.getElementById("bubble").innerHTML = "日時を入力してね。";
+    setBubbleSpeech("日時を入力してね。");
     return;
   }
 
@@ -338,7 +337,7 @@ async function searchBus() {
     document.getElementById("prevBtn").disabled = true;
     document.getElementById("nextBtn").disabled = true;
     const msg = await getTransferMsg("noBus");
-    document.getElementById("bubble").innerHTML = msg.text;
+    setBubbleSpeech(msg.text);
     setCharacterExpression(msg.expression);
     return;
   }
@@ -364,7 +363,7 @@ async function showNextBus() {
 // ---- 初期化 ----
 
 window.addEventListener("load", async () => {
-  document.getElementById("bubble").innerHTML = "行き先と日時を選んで検索してね！";
+  setBubbleSpeech("行き先と日時を選んで検索してね！");
   await Promise.all([loadCSV(), loadHolidays()]);
   document.getElementById("datetime").value = fmtDTL(new Date());
 

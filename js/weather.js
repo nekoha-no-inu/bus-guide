@@ -41,7 +41,7 @@ async function getWeatherData() {
     return { cityName: name, current: data.current_weather, daily: data.daily };
   } catch (e) {
     const msg = await getMessage("weather", "error");
-    document.getElementById("bubble").innerHTML = msg.text;
+    setBubbleSpeech(msg.text);
     setCharacterExpression(msg.expression);
     throw e;
   }
@@ -61,7 +61,7 @@ function formatDate(dateStr) {
 
 async function loadWeather() {
   const loadingMsg = await getMessage("weather", "loading");
-  document.getElementById("bubble").innerHTML = loadingMsg.text;
+  setBubbleSpeech(loadingMsg.text, { instant: true });
 
   const data = await getWeatherData();
 
@@ -71,7 +71,8 @@ async function loadWeather() {
   // 今日
   const todayType = convertWeather(data.current.weathercode);
   const todayMsg  = await getMessage("weather", "today", todayType);
-  document.getElementById("bubble").innerHTML = `今日の${data.cityName}は` + todayMsg.text;
+  const todaySpeech = `今日の${data.cityName}は${todayMsg.text}`;
+  setBubbleSpeech(todaySpeech);
   document.getElementById("todayCard").innerHTML = `
     <h3>今日</h3>
     <img src="${getWeatherIcon(todayType)}" class="weather-icon">
@@ -114,7 +115,7 @@ async function loadWeather() {
     [...data.daily.weathercode].slice(0, 7).sort()[3]
   );
   const weekMsg = await getMessage("weather", "week", weekSummaryType);
-  document.getElementById("bubble").innerHTML += "<br><br>" + weekMsg.text;
+  setBubbleSpeech(`${todaySpeech}\n\n${weekMsg.text}`);
 }
 
 // ---- 初期化 ----

@@ -191,14 +191,29 @@ function renderCalendar() {
 
     const itemsForDay = getSchedulesForDate(dateKey);
     if (itemsForDay.length > 0) {
+      const preview = document.createElement("div");
+      preview.className = "calendar-day-preview";
+
+      itemsForDay.slice(0, 3).forEach(item => {
+        const safeItem = normalizeSchedule(item);
+        const row = document.createElement("span");
+        row.className = `calendar-day-preview-item ${getGenreClassName(safeItem.genre)}`;
+        row.textContent = `${safeItem.person}: ${safeItem.name}`;
+        preview.appendChild(row);
+      });
+
+      if (itemsForDay.length > 3) {
+        const more = document.createElement("span");
+        more.className = "calendar-day-count";
+        more.textContent = `他 ${itemsForDay.length - 3}件`;
+        preview.appendChild(more);
+      }
+
       const count = document.createElement("span");
       count.className = "calendar-day-count";
       count.textContent = `${itemsForDay.length}件`;
       dayCell.appendChild(count);
-
-      const dot = document.createElement("span");
-      dot.className = "calendar-dot";
-      dayCell.appendChild(dot);
+      dayCell.appendChild(preview);
     }
 
     dayCell.addEventListener("click", () => {

@@ -17,6 +17,14 @@
 #monthNav { display:flex; align-items:center; gap:8px; margin:8px 0; }
 #monthNav button { flex:1; padding:10px; border-radius:8px; border:2px solid #4caf50; background:#fff; color:#4caf50; font-size:15px; cursor:pointer; width:auto; }
 #monthTitle { flex:2; text-align:center; font-size:17px; font-weight:bold; }
+.summary-header { display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap; margin-bottom:16px; }
+.summary-chart { min-width:160px; max-width:220px; width:100%; background:#fff; padding:14px; border-radius:14px; box-shadow:0 1px 6px rgba(0,0,0,.08); }
+.summary-chart-placeholder { color:#888; font-size:14px; text-align:center; padding:18px 0; }
+.summary-chart svg { display:block; margin:0 auto; }
+.summary-chart-legend { margin-top:10px; display:grid; gap:6px; font-size:13px; }
+.summary-chart-legend-item { display:flex; align-items:center; gap:8px; justify-content:space-between; }
+.summary-chart-color { width:12px; height:12px; border-radius:50%; display:inline-block; }
+.summary-chart-percent { color:#666; font-size:13px; margin-left:auto; }
 .page-links { display:flex; gap:10px; margin:10px 0; }
 .page-links a { flex:1; display:block; text-align:center; padding:12px; border-radius:8px; background:#4caf50; color:#fff; text-decoration:none; font-size:15px; font-weight:bold; }
 .page-links a:nth-child(2) { background:#2196F3; }
@@ -32,9 +40,14 @@
 
 <a href="home.html" class="menu-btn">← ホームに戻る</a>
 
-<div class="character-area">
-  <div id="bubble" class="bubble">読み込み中…</div>
-  <img id="character" src="img/character_normal.png" class="character">
+<div id="summaryHeader" class="summary-header">
+  <div class="character-area">
+    <div id="bubble" class="bubble">読み込み中…</div>
+    <img id="character" src="img/character_normal.png" class="character">
+  </div>
+  <div id="summaryChart" class="summary-chart">
+    <div class="summary-chart-placeholder">円グラフを生成中...</div>
+  </div>
 </div>
 
 <div id="monthNav">

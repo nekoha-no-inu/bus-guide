@@ -27,11 +27,39 @@ async function getWeather() {
 
 // ---- 時間帯判定 ----
 
+function getApproxSunTimes(date = new Date()) {
+  // 東京近辺を想定した月別のざっくり時刻（分）
+  const month = date.getMonth(); // 0-11
+  const table = [
+    { sunrise: 6 * 60 + 50, sunset: 16 * 60 + 45 }, // 1月
+    { sunrise: 6 * 60 + 25, sunset: 17 * 60 + 20 }, // 2月
+    { sunrise: 5 * 60 + 45, sunset: 17 * 60 + 45 }, // 3月
+    { sunrise: 5 * 60 + 5,  sunset: 18 * 60 + 10 }, // 4月
+    { sunrise: 4 * 60 + 35, sunset: 18 * 60 + 35 }, // 5月
+    { sunrise: 4 * 60 + 25, sunset: 18 * 60 + 55 }, // 6月
+    { sunrise: 4 * 60 + 40, sunset: 18 * 60 + 50 }, // 7月
+    { sunrise: 5 * 60 + 0,  sunset: 18 * 60 + 20 }, // 8月
+    { sunrise: 5 * 60 + 25, sunset: 17 * 60 + 40 }, // 9月
+    { sunrise: 5 * 60 + 50, sunset: 16 * 60 + 55 }, // 10月
+    { sunrise: 6 * 60 + 20, sunset: 16 * 60 + 30 }, // 11月
+    { sunrise: 6 * 60 + 45, sunset: 16 * 60 + 30 }, // 12月
+  ];
+  return table[month];
+}
+
 function getTimeZone() {
-  const h = new Date().getHours();
+  const now = new Date();
+  const h = now.getHours();
+  const m = now.getMinutes();
+  const nowMin = h * 60 + m;
+  const { sunrise, sunset } = getApproxSunTimes(now);
+
+  // 夜は「日没〜翌日の日の出」
+  if (nowMin < sunrise || nowMin >= sunset) return "night";
+
+  // 昼間は従来の morning/noon を維持
   if (h < 11) return "morning";
-  if (h < 17) return "noon";
-  return "night";
+  return "noon";
 }
 
 // ---- 最終更新取得 ----
@@ -75,16 +103,25 @@ function getStoredHomeReminder() {
 async function loadHomeMessage() {
   const reminder = getStoredHomeReminder();
   if (reminder) {
-    document.getElementById("bubble").innerHTML = reminder.text;
+    setBubbleSpeech(reminder.text);
     setCharacterExpression(reminder.expression);
     return;
   }
 
-  const zone    = getTimeZone();
-  const weather = await getWeather();
-  const msg     = await getMessage("home", zone, weather);
+  setBubbleSpeech("こんにちは。ちょっと待ってね…。", { instant: true });
+  setCharacterExpression("normal");
 
-  document.getElementById("bubble").innerHTML = msg.text;
+  const zone = getTimeZone();
+  let weather = null;
+
+  try {
+    weather = await getWeather();
+  } catch (e) {
+    console.warn("Weather fetch failed:", e);
+  }
+
+  const msg = await getMessage("home", zone, weather);
+  setBubbleSpeech(msg.text || "おはようございます。今日もよろしくね。");
   setCharacterExpression(msg.expression);
 }
 
@@ -110,7 +147,7 @@ window.addEventListener("load", async () => {
     await loadHomeMessage();
   } catch (e) {
     console.error("Failed to load home message:", e);
-    document.getElementById("bubble").innerText = "メッセージを取得できませんでした。";
+    setBubbleSpeech("メッセージを取得できませんでした。", { instant: true });
     setCharacterExpression("normal");
   }
 });

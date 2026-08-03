@@ -11,6 +11,8 @@
 #filterRow select,
 #filterRow input[type="month"] { flex:1; min-width:80px; font-size:13px; padding:6px; }
 .filter-btn { padding:6px 14px; background:#4caf50; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:13px; white-space:nowrap; width:auto; }
+.detail-total { background:#fff; border-radius:8px; padding:10px 12px; margin:8px 0; box-shadow:0 1px 3px rgba(0,0,0,.08); font-weight:bold; display:flex; justify-content:space-between; align-items:center; }
+.detail-total span { font-size:14px; }
 .detail-item { background:#fff; border-radius:8px; margin:6px 0; padding:10px 12px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
 .detail-top  { display:flex; justify-content:space-between; align-items:flex-start; }
 .detail-date { font-size:12px; color:#888; }
@@ -79,6 +81,7 @@
   <button id="filterBtn" class="filter-btn">絞り込み</button>
 </div>
 
+<div id="detailTotal" class="detail-total">合計：0円</div>
 <div id="list"><div id="loading">読み込み中…</div></div>
 
 <!-- 編集モーダル -->

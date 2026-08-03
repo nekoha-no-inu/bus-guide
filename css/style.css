@@ -113,6 +113,7 @@ h2 {
   border: 2px solid var(--border-color);
   line-height: 1.6;
   text-align: center;
+  white-space: pre-line;
 }
 
 .bubble::after,
@@ -370,6 +371,12 @@ label {
   margin: 12px 0;
 }
 
+.calendar-toolbar .action-btn {
+  min-width: 80px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -389,12 +396,61 @@ label {
   border-radius: 12px;
   background: #fffdf9;
   padding: 8px 4px;
-  min-height: 76px;
+  min-height: 96px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
   cursor: pointer;
+}
+
+.calendar-day-preview {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.calendar-day-preview-item {
+  display: block;
+  width: 100%;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-day-preview-item.schedule-genre-work {
+  background: rgba(74, 144, 226, 0.14);
+  color: #2e4f7b;
+}
+
+.calendar-day-preview-item.schedule-genre-school {
+  background: rgba(155, 93, 229, 0.14);
+  color: #4f3780;
+}
+
+.calendar-day-preview-item.schedule-genre-errand {
+  background: rgba(244, 162, 97, 0.14);
+  color: #7f4d1d;
+}
+
+.calendar-day-preview-item.schedule-genre-study {
+  background: rgba(42, 157, 143, 0.14);
+  color: #1f5b52;
+}
+
+.calendar-day-preview-item.schedule-genre-event {
+  background: rgba(231, 111, 81, 0.14);
+  color: #7a3930;
+}
+
+.calendar-day-preview-item.schedule-genre-default {
+  background: rgba(158, 140, 124, 0.14);
+  color: #584c43;
 }
 
 .calendar-day.is-muted {
