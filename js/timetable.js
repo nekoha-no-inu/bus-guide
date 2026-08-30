@@ -4,6 +4,13 @@
 
 let _routes    = [];
 let _schedules = [];
+const STOP_NAME_ALIAS = {
+  "台田団地中央": "下戸",
+};
+
+function normalizeStopName(name) {
+  return STOP_NAME_ALIAS[name] || name;
+}
 
 // ---- CSV 読み込み ----
 
@@ -20,6 +27,16 @@ async function loadAllCSV() {
     fetch("data/routes.csv").then(r => r.text()).then(parse),
     fetch("data/schedules.csv").then(r => r.text()).then(parse)
   ]);
+
+  _routes = _routes.map(r => ({
+    ...r,
+    stop: normalizeStopName(r.stop),
+    getoff: normalizeStopName(r.getoff),
+  }));
+  _schedules = _schedules.map(s => ({
+    ...s,
+    stop: normalizeStopName(s.stop),
+  }));
 }
 
 // ---- 系統グループ ----

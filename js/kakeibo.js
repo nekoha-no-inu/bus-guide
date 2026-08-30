@@ -3,6 +3,12 @@
 // ======================================
 // Firebase は firebase.js で初期化済み（db を参照）
 
+const KAKEIBO_STORAGE_KEYS = {
+  LAST_INPUT_DATE: "kakeibo.lastInputDate",
+  SELECTED_MONTH: "kakeibo.selectedMonth",
+  DETAIL_INLINE_INPUT: "kakeibo.detailInlineInput",
+};
+
 // ---- レコード取得（月別） ----
 async function fetchRecords(yearMonth) {
   const [y, m] = yearMonth.split("-");
@@ -89,21 +95,43 @@ const SUBCATEGORY_MAP = {
   "臨時収入": []
 };
 
+const EXPENSE_CATEGORIES = ["固定費", "変動費", "臨時出費", "旅費"];
+const INCOME_CATEGORIES = ["給与", "臨時収入"];
+
+function getAllSubcategories() {
+  return [...new Set(Object.values(SUBCATEGORY_MAP).flat())];
+}
+
+function getStoredInputDate() {
+  const v = localStorage.getItem(KAKEIBO_STORAGE_KEYS.LAST_INPUT_DATE);
+  return v || null;
+}
+
+function saveInputDate(date) {
+  if (!date) return;
+  localStorage.setItem(KAKEIBO_STORAGE_KEYS.LAST_INPUT_DATE, date);
+}
+
+function defaultInputDate() {
+  return getStoredInputDate() || todayStr();
+}
+
+function populateSubcategorySelect(selectEl, values, withAllOption = false) {
+  if (!selectEl) return;
+
+  const selected = selectEl.value;
+  const head = withAllOption ? ['<option value="">全小項目</option>'] : [];
+  selectEl.innerHTML = head.concat(values.map(v => `<option value="${v}">${v}</option>`)).join("");
+  if (selected && values.includes(selected)) {
+    selectEl.value = selected;
+  }
+}
+
 // ---- 大項目変更時：小項目を切り替え ----
 function onFilterCategoryChange() {
-  const cat = document.getElementById("f-category").value;
   const subSel = document.getElementById("f-subcategory");
-
-  subSel.innerHTML = `<option value="">全小項目</option>`;
-
-  if (!cat || !SUBCATEGORY_MAP[cat]) return;
-
-  SUBCATEGORY_MAP[cat].forEach(sc => {
-    const op = document.createElement("option");
-    op.value = sc;
-    op.textContent = sc;
-    subSel.appendChild(op);
-  });
+  if (!subSel) return;
+  populateSubcategorySelect(subSel, getAllSubcategories(), true);
 }
 
 // ---- kakeibo input page ----
@@ -114,16 +142,18 @@ function setInputTypeState(type) {
   if (!catSel || !subBlk) return;
 
   if (type === "収入") {
-    catSel.innerHTML = `<option value="給与">給与</option><option value="臨時収入">臨時収入</option>`;
+    catSel.innerHTML = INCOME_CATEGORIES.map(v => `<option value="${v}">${v}</option>`).join("");
     subBlk.style.display = "none";
     getMessage("kakeibo", "input_income").then(m => {
       setBubbleSpeech(m.text);
       setCharacterExpression(m.expression);
     });
   } else {
-    catSel.innerHTML = ["固定費", "変動費", "臨時出費", "旅費"]
+    catSel.innerHTML = EXPENSE_CATEGORIES
       .map(v => `<option value="${v}">${v}</option>`).join("");
     subBlk.style.display = "block";
+    const subSel = document.getElementById("f-subcategory");
+    populateSubcategorySelect(subSel, getAllSubcategories(), false);
     getMessage("kakeibo", "input_expense").then(m => {
       setBubbleSpeech(m.text);
       setCharacterExpression(m.expression);
@@ -155,6 +185,7 @@ async function submitKakeiboForm() {
 
   try {
     await addRecord({ type, date, category: cat, subcategory: subcat, description: desc, amount, person });
+    saveInputDate(date);
     getMessage("kakeibo", "saved", null, {
       description: desc,
       amount: amount.toLocaleString()
@@ -164,7 +195,6 @@ async function submitKakeiboForm() {
     });
     document.getElementById("f-description").value = "";
     document.getElementById("f-amount").value      = "";
-    document.getElementById("f-date").value        = todayStr();
   } catch (e) {
     getMessage("kakeibo", "save_error").then(m => {
       setBubbleSpeech(m.text);
@@ -189,13 +219,17 @@ function initKakeiboInputPage() {
     });
   }
 
-  document.getElementById("f-date").value = todayStr();
+  const dateEl = document.getElementById("f-date");
+  if (dateEl) {
+    dateEl.value = defaultInputDate();
+    dateEl.addEventListener("change", () => saveInputDate(dateEl.value));
+  }
   onKakeiboInputTypeChange();
 }
 
 // ---- kakeibo summary page ----
 
-let currentYM = thisMonth();
+let currentYM = localStorage.getItem(KAKEIBO_STORAGE_KEYS.SELECTED_MONTH) || thisMonth();
 
 function ymLabel(ym) {
   const [y, m] = ym.split("-");
@@ -278,7 +312,14 @@ function changeMonth(delta) {
   if (m > 12) { m = 1; y++; }
   if (m < 1)  { m = 12; y--; }
   currentYM = `${y}-${String(m).padStart(2, "0")}`;
+  localStorage.setItem(KAKEIBO_STORAGE_KEYS.SELECTED_MONTH, currentYM);
   renderKakeiboSummary();
+}
+
+function updateDetailLink() {
+  const detailLink = document.querySelector('.page-links a[href="kakeibo-detail.html"]');
+  if (!detailLink) return;
+  detailLink.href = `kakeibo-detail.html?month=${encodeURIComponent(currentYM)}`;
 }
 
 async function renderKakeiboSummary() {
@@ -289,6 +330,8 @@ async function renderKakeiboSummary() {
   if (!monthTitle || !summary || !breakdown) return;
 
   monthTitle.textContent = ymLabel(currentYM);
+  localStorage.setItem(KAKEIBO_STORAGE_KEYS.SELECTED_MONTH, currentYM);
+  updateDetailLink();
   summary.innerHTML = '<div id="loading">読み込み中…</div>';
   breakdown.innerHTML = "";
 
@@ -365,12 +408,14 @@ function initKakeiboSummaryPage() {
 let editingFirestoreId = null;
 
 function setDefaultMonth() {
-  const now = new Date();
-  const p   = n => String(n).padStart(2, "0");
   const monthInput = document.getElementById("f-month");
-  if (monthInput) {
-    monthInput.value = `${now.getFullYear()}-${p(now.getMonth() + 1)}`;
-  }
+  if (!monthInput) return;
+
+  const qMonth = new URLSearchParams(window.location.search).get("month");
+  const saved = localStorage.getItem(KAKEIBO_STORAGE_KEYS.SELECTED_MONTH);
+  const initial = qMonth || saved || thisMonth();
+  monthInput.value = initial;
+  localStorage.setItem(KAKEIBO_STORAGE_KEYS.SELECTED_MONTH, initial);
 }
 
 async function loadKakeiboDetailList() {
@@ -390,6 +435,13 @@ async function loadKakeiboDetailList() {
   try {
     const records = await fetchAllRecords(filters);
     list.innerHTML = "";
+
+    const expense = records.filter(r => r.type === "支出").reduce((s, r) => s + Number(r.amount), 0);
+    const income = records.filter(r => r.type === "収入").reduce((s, r) => s + Number(r.amount), 0);
+    const totalEl = document.getElementById("detailTotal");
+    if (totalEl) {
+      totalEl.innerHTML = `<span>収入 ${fmt(income)}</span><span>支出 ${fmt(expense)}</span><span>収支 ${fmt(income - expense)}</span>`;
+    }
 
     if (records.length === 0) {
       list.innerHTML = "<p style='color:#999;font-size:14px;text-align:center;margin:20px 0;'>該当するデータはないよ。</p>";
@@ -505,11 +557,52 @@ function initKakeiboDetailPage() {
   const saveBtn = document.getElementById("saveEditBtn");
   const deleteBtn = document.getElementById("confirmDeleteBtn");
   const closeBtn = document.getElementById("closeModalBtn");
+  const monthEl = document.getElementById("f-month");
+  const inlineToggle = document.getElementById("detailInlineInputToggle");
+  const inlineSubmitBtn = document.getElementById("d-submitBtn");
+  const inlineClearBtn = document.getElementById("d-clearBtn");
+  const inlineTypeEl = document.getElementById("d-type");
 
   if (!filterBtn || !listEl) return;
 
   filterBtn.addEventListener("click", loadKakeiboDetailList);
   if (fCategory) fCategory.addEventListener("change", onFilterCategoryChange);
+  onFilterCategoryChange();
+
+  if (monthEl) {
+    monthEl.addEventListener("change", () => {
+      localStorage.setItem(KAKEIBO_STORAGE_KEYS.SELECTED_MONTH, monthEl.value);
+    });
+  }
+
+  if (inlineToggle) {
+    inlineToggle.checked = localStorage.getItem(KAKEIBO_STORAGE_KEYS.DETAIL_INLINE_INPUT) === "1";
+    inlineToggle.addEventListener("change", () => {
+      setDetailInlineLayout(inlineToggle.checked);
+    });
+    setDetailInlineLayout(inlineToggle.checked);
+  }
+
+  if (inlineTypeEl) {
+    inlineTypeEl.addEventListener("change", onDetailInlineTypeChange);
+    onDetailInlineTypeChange();
+  }
+
+  const inlineDateEl = document.getElementById("d-date");
+  if (inlineDateEl) {
+    inlineDateEl.value = defaultInputDate();
+    inlineDateEl.addEventListener("change", () => saveInputDate(inlineDateEl.value));
+  }
+
+  if (inlineSubmitBtn) inlineSubmitBtn.addEventListener("click", submitDetailInlineForm);
+  if (inlineClearBtn) {
+    inlineClearBtn.addEventListener("click", () => {
+      const dDesc = document.getElementById("d-description");
+      const dAmount = document.getElementById("d-amount");
+      if (dDesc) dDesc.value = "";
+      if (dAmount) dAmount.value = "";
+    });
+  }
   listEl.addEventListener("click", e => {
     const btn = e.target.closest(".edit-btn");
     if (btn) {
@@ -523,6 +616,94 @@ function initKakeiboDetailPage() {
 
   setDefaultMonth();
   loadKakeiboDetailList();
+}
+
+function setDetailInlineLayout(enabled) {
+  const layout = document.getElementById("detailLayout");
+  const pane = document.getElementById("detailInputPane");
+  if (!layout || !pane) return;
+
+  if (enabled) {
+    layout.classList.add("split");
+    pane.style.display = "block";
+  } else {
+    layout.classList.remove("split");
+    pane.style.display = "none";
+  }
+
+  localStorage.setItem(KAKEIBO_STORAGE_KEYS.DETAIL_INLINE_INPUT, enabled ? "1" : "0");
+}
+
+function setDetailInlineTypeState(type) {
+  const catSel = document.getElementById("d-category");
+  const subBlk = document.getElementById("d-subcategory-block");
+  const subSel = document.getElementById("d-subcategory");
+  if (!catSel || !subBlk || !subSel) return;
+
+  if (type === "収入") {
+    catSel.innerHTML = INCOME_CATEGORIES.map(v => `<option value="${v}">${v}</option>`).join("");
+    subBlk.style.display = "none";
+    subSel.innerHTML = "";
+  } else {
+    catSel.innerHTML = EXPENSE_CATEGORIES.map(v => `<option value="${v}">${v}</option>`).join("");
+    subBlk.style.display = "block";
+    populateSubcategorySelect(subSel, getAllSubcategories(), false);
+  }
+}
+
+function onDetailInlineTypeChange() {
+  const typeEl = document.getElementById("d-type");
+  if (!typeEl) return;
+  setDetailInlineTypeState(typeEl.value);
+}
+
+async function submitDetailInlineForm() {
+  const dateEl = document.getElementById("d-date");
+  const typeEl = document.getElementById("d-type");
+  const catEl = document.getElementById("d-category");
+  const subEl = document.getElementById("d-subcategory");
+  const descEl = document.getElementById("d-description");
+  const amountEl = document.getElementById("d-amount");
+  const personEl = document.getElementById("d-person");
+
+  if (!dateEl || !typeEl || !catEl || !descEl || !amountEl || !personEl) return;
+
+  const date = dateEl.value;
+  const type = typeEl.value;
+  const category = catEl.value;
+  const subcategory = type === "支出" && subEl ? subEl.value : "";
+  const description = descEl.value.trim();
+  const amount = parseInt(amountEl.value, 10);
+  const person = personEl.value;
+
+  if (!date || !description || !amount || isNaN(amount)) {
+    const msg = await getMessage("kakeibo", "empty_input");
+    setBubbleSpeech(msg.text);
+    setCharacterExpression(msg.expression);
+    return;
+  }
+
+  try {
+    await addRecord({ type, date, category, subcategory, description, amount, person });
+    saveInputDate(date);
+
+    descEl.value = "";
+    amountEl.value = "";
+
+    const msg = await getMessage("kakeibo", "saved", null, {
+      description,
+      amount: amount.toLocaleString(),
+    });
+    setBubbleSpeech(msg.text);
+    setCharacterExpression(msg.expression);
+
+    loadKakeiboDetailList();
+  } catch (e) {
+    const msg = await getMessage("kakeibo", "save_error");
+    setBubbleSpeech(msg.text);
+    setCharacterExpression(msg.expression);
+    console.error(e);
+  }
 }
 
 window.addEventListener("load", () => {

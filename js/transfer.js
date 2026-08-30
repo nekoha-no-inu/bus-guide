@@ -4,6 +4,18 @@
 
 const HOLIDAY_API =
   "https://www.googleapis.com/calendar/v3/calendars/japanese__ja@holiday.calendar.google.com/events?key=AIzaSyCCQB3KoCaFIvG1Wf8xy7y03d1ACHjqpsU";
+const TRANSIT_API_BASE = "https://api.transit.ls8h.com";
+const TRANSIT_API_TIMEOUT_MS = 4500;
+const STOP_NAME_ALIAS = {
+  "台田団地中央": "下戸",
+};
+const API_MODE_QUERY = {
+  "自宅→清瀬駅": { station: "清瀬駅北口" },
+  "自宅→新座駅": { station: "新座駅南口" },
+  "清瀬駅→自宅": { station: "清瀬駅北口" },
+  "新座駅→自宅": { station: "新座駅南口" },
+};
+const _endpointCache = new Map();
 
 let holidayList = [];
 let routes      = [];
@@ -14,6 +26,8 @@ let _allIndex       = 0;
 let _lastMode       = "";
 let _lastDayType    = "";
 let _lastIsFromHome = true;
+let _initialStartMin = 0;
+let _lastDataSource  = "CSV";
 
 // ---- データ読み込み ----
 
@@ -35,6 +49,22 @@ async function loadCSV() {
     fetch("data/routes.csv").then(r => r.text()).then(parse),
     fetch("data/schedules.csv").then(r => r.text()).then(parse)
   ]);
+
+  // 旧停留所名を新しい表記へ寄せて、CSV間の一致と表示を揃える。
+  routes = routes.map(r => {
+    const normalizedStop = normalizeStopName(r.stop);
+    const normalizedGetoff = normalizeStopName(r.getoff);
+    const normalized = { ...r, stop: normalizedStop, getoff: normalizedGetoff };
+    if ((normalized.stop === "下戸" || normalized.getoff === "下戸") && /^清64(?:-|$)/.test(normalized.line)) {
+      normalized.walk_min = "6";
+    }
+    return normalized;
+  });
+  schedules = schedules.map(s => ({ ...s, stop: normalizeStopName(s.stop) }));
+}
+
+function normalizeStopName(name) {
+  return STOP_NAME_ALIAS[name] || name;
 }
 
 // ---- 日付ユーティリティ ----
@@ -61,6 +91,268 @@ function fmtDTL(date) {
   return `${date.getFullYear()}-${p(date.getMonth()+1)}-${p(date.getDate())}T${p(date.getHours())}:${p(date.getMinutes())}`;
 }
 function grp(line) { return line.replace(/-\d+$/, ""); }
+
+function safeNum(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseApiTimeToMin(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const totalMin = Math.floor(value / 60);
+    return ((totalMin % (24 * 60)) + (24 * 60)) % (24 * 60);
+  }
+  if (typeof value !== "string") return null;
+
+  const hhmm = value.match(/^(\d{1,2}):(\d{2})/);
+  if (hhmm) {
+    const h = Number(hhmm[1]);
+    const m = Number(hhmm[2]);
+    if (Number.isFinite(h) && Number.isFinite(m)) return h * 60 + m;
+  }
+
+  const d = new Date(value);
+  if (!Number.isNaN(d.getTime())) {
+    return d.getHours() * 60 + d.getMinutes();
+  }
+  return null;
+}
+
+function fmtYmd(date) {
+  const p = n => String(n).padStart(2, "0");
+  return `${date.getFullYear()}${p(date.getMonth() + 1)}${p(date.getDate())}`;
+}
+
+function fmtHm(date) {
+  const p = n => String(n).padStart(2, "0");
+  return `${p(date.getHours())}:${p(date.getMinutes())}`;
+}
+
+function pickFirstArray(...candidates) {
+  for (const c of candidates) {
+    if (Array.isArray(c)) return c;
+  }
+  return [];
+}
+
+function isTransitLeg(leg) {
+  const mode = String(leg?.mode || leg?.transportMode || leg?.type || "").toUpperCase();
+  if (!mode) return !!(leg?.route || leg?.line);
+  if (mode.includes("WALK")) return false;
+  return true;
+}
+
+function estimateWalkMinutes(legs, isFromHome) {
+  if (!Array.isArray(legs) || legs.length === 0) return isFromHome ? 6 : 6;
+
+  const walkLegs = legs.filter(l => {
+    const kind = String(l?.kind || "").toLowerCase();
+    if (kind === "walk") return true;
+    const mode = String(l?.mode || l?.transportMode || l?.type || "").toUpperCase();
+    return mode.includes("WALK");
+  });
+
+  if (walkLegs.length === 0) return isFromHome ? 6 : 6;
+
+  const total = walkLegs.reduce((sum, leg) => {
+    const durationBySecs = (safeNum(leg?.arrivalSecs) !== null && safeNum(leg?.departureSecs) !== null)
+      ? (safeNum(leg?.arrivalSecs) - safeNum(leg?.departureSecs))
+      : null;
+    if (durationBySecs !== null && durationBySecs > 0) return sum + durationBySecs;
+
+    const durationSec = safeNum(leg?.durationSec) ?? safeNum(leg?.durationSeconds) ?? safeNum(leg?.duration);
+    if (durationSec !== null) return sum + durationSec;
+    const durationMin = safeNum(leg?.durationMin) ?? safeNum(leg?.durationMinutes);
+    if (durationMin !== null) return sum + durationMin * 60;
+    return sum;
+  }, 0);
+
+  if (total <= 0) return isFromHome ? 6 : 6;
+  return Math.max(1, Math.round(total / 60));
+}
+
+function extractTransitJourneys(payload) {
+  return pickFirstArray(
+    payload?.journeys,
+    payload?.itineraries,
+    payload?.plans,
+    payload?.routes,
+    payload?.results,
+    payload?.data?.journeys,
+    payload?.data?.itineraries,
+    payload?.data?.plans,
+    payload?.data?.routes,
+    payload?.data?.results
+  );
+}
+
+function uniqueBy(items, keyFn) {
+  const seen = new Set();
+  return items.filter(item => {
+    const key = keyFn(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function getModeStopNames(mode, isFromHome) {
+  const modeRoutes = routes.filter(r => r.mode === mode);
+  if (modeRoutes.length === 0) return [];
+
+  if (isFromHome) {
+    return uniqueBy(modeRoutes.map(r => normalizeStopName(r.stop)), n => n).filter(Boolean);
+  }
+  return uniqueBy(modeRoutes.map(r => normalizeStopName(r.getoff)), n => n).filter(Boolean);
+}
+
+function toApiCandidates(payload, mode, startMin, isFromHome) {
+  const journeys = extractTransitJourneys(payload);
+  if (journeys.length === 0) return [];
+
+  const built = journeys.map(journey => {
+    const legs = pickFirstArray(journey?.legs, journey?.sections, journey?.segments, journey?.trips);
+    const transitLegs = legs.filter(isTransitLeg);
+    const firstLeg = transitLegs[0] || null;
+    const lastLeg = transitLegs[transitLegs.length - 1] || firstLeg;
+
+    const departMin = parseApiTimeToMin(
+      firstLeg?.departureSecs ?? firstLeg?.departureTime ?? firstLeg?.departure?.time ?? journey?.departureSecs ?? journey?.departureTime ?? journey?.departure?.time
+    );
+    const arriveMin = parseApiTimeToMin(
+      lastLeg?.arrivalSecs ?? lastLeg?.arrivalTime ?? lastLeg?.arrival?.time ?? journey?.arrivalSecs ?? journey?.arrivalTime ?? journey?.arrival?.time
+    );
+    if (departMin === null || arriveMin === null) return null;
+
+    let rideMin = arriveMin - departMin;
+    if (rideMin <= 0) rideMin += 24 * 60;
+
+    const walkMin = estimateWalkMinutes(legs, isFromHome);
+    const line =
+      firstLeg?.routeName ||
+      firstLeg?.route?.shortName ||
+      firstLeg?.route?.name ||
+      firstLeg?.line?.shortName ||
+      firstLeg?.line?.name ||
+      firstLeg?.headsign ||
+      firstLeg?.name ||
+      "API経路";
+
+    const stop = normalizeStopName(
+      firstLeg?.from?.name || firstLeg?.departure?.stop?.name || firstLeg?.origin?.name || payload?.from?.name || "出発地"
+    );
+    const getoff = normalizeStopName(
+      lastLeg?.to?.name || lastLeg?.arrival?.stop?.name || lastLeg?.destination?.name || payload?.to?.name || "到着地"
+    );
+
+    const finishMin = isFromHome ? arriveMin : arriveMin + walkMin;
+    return {
+      line,
+      group: grp(line),
+      stop,
+      getoff,
+      depart: toTime(departMin),
+      arrive: toTime(arriveMin),
+      walk: walkMin,
+      ride: rideMin,
+      finishMin,
+    };
+  }).filter(Boolean);
+
+  return built
+    .filter(c => toMin(c.depart) >= startMin)
+    .sort((a, b) => a.finishMin - b.finishMin || toMin(a.depart) - toMin(b.depart));
+}
+
+async function resolvePlaceEndpointByName(name) {
+  const key = normalizeStopName(name);
+  if (_endpointCache.has(key)) return _endpointCache.get(key);
+
+  const url = `${TRANSIT_API_BASE}/api/v1/places/suggest?q=${encodeURIComponent(key)}&limit=8`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Place suggest failed: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const places = Array.isArray(data?.places) ? data.places : [];
+  if (places.length === 0) {
+    throw new Error(`No endpoint for place: ${key}`);
+  }
+
+  const exact = places.find(p => normalizeStopName(p?.name) === key && (p?.kind === "stop" || p?.kind === "station"));
+  const preferred = exact || places.find(p => p?.kind === "stop" || p?.kind === "station") || places[0];
+  const endpoint = preferred?.endpoint || null;
+  if (!endpoint) {
+    throw new Error(`No endpoint field for place: ${key}`);
+  }
+
+  _endpointCache.set(key, endpoint);
+  return endpoint;
+}
+
+async function loadCandidatesFromTransitAPI(mode, dt, startMin, isFromHome) {
+  const q = API_MODE_QUERY[mode];
+  if (!q) return [];
+
+  const stationName = q.station;
+  const homeStops = getModeStopNames(mode, isFromHome);
+  if (!stationName || homeStops.length === 0) return [];
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TRANSIT_API_TIMEOUT_MS);
+
+  try {
+    const stationEndpoint = await resolvePlaceEndpointByName(stationName);
+    const stopEndpoints = await Promise.all(homeStops.map(name => resolvePlaceEndpointByName(name)));
+
+    const allCandidates = [];
+    for (let i = 0; i < homeStops.length; i++) {
+      const stopName = homeStops[i];
+      const stopEndpoint = stopEndpoints[i];
+      const fromEndpoint = isFromHome ? stopEndpoint : stationEndpoint;
+      const toEndpoint = isFromHome ? stationEndpoint : stopEndpoint;
+      const fromLabel = isFromHome ? stopName : stationName;
+      const toLabel = isFromHome ? stationName : stopName;
+
+      const params = new URLSearchParams({
+        from: fromEndpoint,
+        to: toEndpoint,
+        fromLabel,
+        toLabel,
+        date: fmtYmd(dt),
+        time: fmtHm(dt),
+        type: "departure",
+        allowModes: "bus",
+        numItineraries: "6",
+      });
+
+      const res = await fetch(`${TRANSIT_API_BASE}/api/v1/plan?${params.toString()}`, {
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        throw new Error(`Transit API failed: ${res.status}`);
+      }
+
+      const payload = await res.json();
+      const candidates = toApiCandidates(payload, mode, startMin, isFromHome)
+        .map(c => ({ ...c, stop: normalizeStopName(c.stop), getoff: normalizeStopName(c.getoff) }));
+      allCandidates.push(...candidates);
+    }
+
+    const deduped = uniqueBy(
+      allCandidates,
+      c => `${c.line}|${c.stop}|${c.getoff}|${c.depart}|${c.arrive}`
+    ).sort((a, b) => a.finishMin - b.finishMin || toMin(a.depart) - toMin(b.depart));
+
+    return deduped;
+  } catch (err) {
+    console.warn("Transit API unavailable, fallback to CSV", err);
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 // ---- 会話JSONからメッセージをランダム取得 ----
 
@@ -323,9 +615,20 @@ async function searchBus() {
   _lastIsFromHome = isFromHome;
   _initialStartMin = startMin;
 
-  document.getElementById("dayTypeDisplay").innerText = `この日は「${dayType}」ダイヤです`;
+  const csvCandidates = buildAllCandidates(mode, dayType, startMin);
+  const apiCandidates = await loadCandidatesFromTransitAPI(mode, dt, startMin, isFromHome);
 
-  _allCandidates = buildAllCandidates(mode, dayType, startMin);
+  if (apiCandidates.length > 0) {
+    _allCandidates = apiCandidates;
+    _lastDataSource = "Transit API";
+  } else {
+    _allCandidates = csvCandidates;
+    _lastDataSource = "CSV（フォールバック）";
+  }
+
+  document.getElementById("dayTypeDisplay").innerText =
+    `この日は「${dayType}」ダイヤです（データ: ${_lastDataSource}）`;
+
   _allIndex      = 0;
 
   console.log("allCandidates:", _allCandidates);
