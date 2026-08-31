@@ -32,8 +32,19 @@ let _lastDataSource  = "CSV";
 // ---- データ読み込み ----
 
 async function loadHolidays() {
-  const data = await fetch(HOLIDAY_API).then(r => r.json());
-  holidayList = data.items.filter(ev => ev.start?.date).map(ev => ev.start.date);
+  try {
+    const res = await fetch(HOLIDAY_API);
+    if (!res.ok) {
+      throw new Error(`Holiday API failed: ${res.status}`);
+    }
+    const data = await res.json();
+    holidayList = Array.isArray(data?.items)
+      ? data.items.filter(ev => ev.start?.date).map(ev => ev.start.date)
+      : [];
+  } catch (e) {
+    console.error("loadHolidays failed, falling back to empty holiday list:", e);
+    holidayList = [];
+  }
 }
 
 async function loadCSV() {
@@ -52,8 +63,8 @@ async function loadCSV() {
 
   // 旧停留所名を新しい表記へ寄せて、CSV間の一致と表示を揃える。
   routes = routes.map(r => {
-    const normalizedStop = normalizeStopName(r.stop);
-    const normalizedGetoff = normalizeStopName(r.getoff);
+    const normalizedStop = normalizeStopNameForLine(r.stop, r.line);
+    const normalizedGetoff = normalizeStopNameForLine(r.getoff, r.line);
     const normalized = { ...r, stop: normalizedStop, getoff: normalizedGetoff };
     if ((normalized.stop === "下戸" || normalized.getoff === "下戸") && /^清64(?:-|$)/.test(normalized.line)) {
       normalized.walk_min = "6";
@@ -65,6 +76,31 @@ async function loadCSV() {
 
 function normalizeStopName(name) {
   return STOP_NAME_ALIAS[name] || name;
+}
+// 清62系統は「台田」発着（「下戸」は清64系統のバス停なので混同を防ぐ）
+function normalizeStopNameForLine(name, line) {
+  const normalized = normalizeStopName(name);
+
+  // 清62系統かどうかを厳密に判定
+  const isSeibu62 = /^清62(?:-|$)/.test(line);
+
+  // CSV に存在する停留所名一覧
+  const csvStops = routes.map(r => normalizeStopName(r.stop));
+  const csvGetoffs = routes.map(r => normalizeStopName(r.getoff));
+  const csvNames = new Set([...csvStops, ...csvGetoffs]);
+
+  // 「下戸」補正は CSV に存在する場合のみ適用
+  const isCsvExactMatch = csvNames.has(normalized);
+
+  // 補正条件：
+  // 1. 清62系統である
+  // 2. normalized が「下戸」である
+  // 3. CSV に「下戸」が存在する（誤変換防止）
+  if (isSeibu62 && normalized === "下戸" && isCsvExactMatch) {
+    return "台田";
+  }
+
+  return normalized;
 }
 
 // ---- 日付ユーティリティ ----
@@ -186,6 +222,21 @@ function extractTransitJourneys(payload) {
   );
 }
 
+function extractStopNameFromLeg(leg, payload) {
+  const candidates = [
+    leg?.from?.name,
+    leg?.departure?.stop?.name,
+    leg?.departure?.place?.name,
+    leg?.origin?.name,
+    leg?.from?.code,
+    leg?.departure?.stop?.code,
+    payload?.from?.name
+  ];
+
+  const raw = candidates.find(v => typeof v === "string" && v.trim().length > 0);
+  return raw || "出発地";
+}
+
 function uniqueBy(items, keyFn) {
   const seen = new Set();
   return items.filter(item => {
@@ -206,6 +257,63 @@ function getModeStopNames(mode, isFromHome) {
   return uniqueBy(modeRoutes.map(r => normalizeStopName(r.getoff)), n => n).filter(Boolean);
 }
 
+// 系統（清62/清62-1 など）ごとに routes.csv の正しい停留所名・徒歩時間を引く
+function findCsvRouteForLine(mode, line) {
+  if (!line) return null;
+
+  // 全角 → 半角
+  const normalizedLine = line.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+
+  // 数字抽出（例：清61 → 61）
+  const numMatch = normalizedLine.match(/\d+/);
+  const apiNum = numMatch ? numMatch[0] : null;
+
+  // CSV の系統名一覧
+  const csvGroups = routes
+    .filter(r => r.mode === mode)
+    .map(r => grp(r.line));
+
+  // 1. 数字一致（最優先）
+  if (apiNum) {
+    const matchedGroup = csvGroups.find(g => g.includes(apiNum));
+    if (matchedGroup) {
+      return routes.find(r => r.mode === mode && grp(r.line) === matchedGroup) || null;
+    }
+  }
+
+  // 2. 部分一致（例：清61系統 → 清61）
+  const partialMatch = csvGroups.find(g => normalizedLine.includes(g));
+  if (partialMatch) {
+    return routes.find(r => r.mode === mode && grp(r.line) === partialMatch) || null;
+  }
+
+  // 3. grp(line) が一致するもの
+  const g = grp(normalizedLine);
+  const fallback = routes.find(r => r.mode === mode && grp(r.line) === g);
+  if (fallback) return fallback;
+
+  return null;
+}
+
+
+// ---- Transit API の leg から停留所名を安定して抽出する ----
+function extractStopNameFromLeg(leg, payload) {
+  const candidates = [
+    leg?.from?.name,
+    leg?.departure?.stop?.name,
+    leg?.departure?.place?.name,
+    leg?.origin?.name,
+    leg?.from?.code,
+    leg?.departure?.stop?.code,
+    payload?.from?.name
+  ];
+
+  // 最初に有効な文字列を採用
+  const raw = candidates.find(v => typeof v === "string" && v.trim().length > 0);
+  return raw || "出発地";
+}
+
+
 function toApiCandidates(payload, mode, startMin, isFromHome) {
   const journeys = extractTransitJourneys(payload);
   if (journeys.length === 0) return [];
@@ -217,35 +325,70 @@ function toApiCandidates(payload, mode, startMin, isFromHome) {
     const lastLeg = transitLegs[transitLegs.length - 1] || firstLeg;
 
     const departMin = parseApiTimeToMin(
-      firstLeg?.departureSecs ?? firstLeg?.departureTime ?? firstLeg?.departure?.time ?? journey?.departureSecs ?? journey?.departureTime ?? journey?.departure?.time
+      firstLeg?.departureSecs ?? firstLeg?.departureTime ?? firstLeg?.departure?.time ??
+      journey?.departureSecs ?? journey?.departureTime ?? journey?.departure?.time
     );
     const arriveMin = parseApiTimeToMin(
-      lastLeg?.arrivalSecs ?? lastLeg?.arrivalTime ?? lastLeg?.arrival?.time ?? journey?.arrivalSecs ?? journey?.arrivalTime ?? journey?.arrival?.time
+      lastLeg?.arrivalSecs ?? lastLeg?.arrivalTime ?? lastLeg?.arrival?.time ??
+      journey?.arrivalSecs ?? journey?.arrivalTime ?? journey?.arrival?.time
     );
     if (departMin === null || arriveMin === null) return null;
 
     let rideMin = arriveMin - departMin;
     if (rideMin <= 0) rideMin += 24 * 60;
 
-    const walkMin = estimateWalkMinutes(legs, isFromHome);
-    const line =
-      firstLeg?.routeName ||
-      firstLeg?.route?.shortName ||
-      firstLeg?.route?.name ||
-      firstLeg?.line?.shortName ||
-      firstLeg?.line?.name ||
-      firstLeg?.headsign ||
-      firstLeg?.name ||
-      "API経路";
+    // -----------------------------
+    // ★ 修正：line 名の抽出を強化
+    // -----------------------------
+    const rawLineCandidates = [
+      firstLeg?.routeName,
+      firstLeg?.route?.shortName,
+      firstLeg?.route?.name,
+      firstLeg?.line?.shortName,
+      firstLeg?.line?.name,
+      firstLeg?.headsign,
+      firstLeg?.name
+    ].filter(Boolean);
 
-    const stop = normalizeStopName(
-      firstLeg?.from?.name || firstLeg?.departure?.stop?.name || firstLeg?.origin?.name || payload?.from?.name || "出発地"
+    // CSV の line 名一覧（清61 / 清62 / 清64）
+    const csvLines = routes.map(r => grp(r.line));
+
+    // CSV と一致する候補を探す
+    const matchedCsvLine = rawLineCandidates.find(raw =>
+      csvLines.some(csv => raw.includes(csv))
     );
-    const getoff = normalizeStopName(
-      lastLeg?.to?.name || lastLeg?.arrival?.stop?.name || lastLeg?.destination?.name || payload?.to?.name || "到着地"
-    );
+
+    const line = matchedCsvLine || rawLineCandidates[0] || "不明系統";
+
+    // -----------------------------
+    // CSV の route が見つかればそれを優先
+    // -----------------------------
+    const csvRoute = findCsvRouteForLine(mode, line);
+
+    const walkMin = csvRoute
+      ? Number(csvRoute.walk_min)
+      : estimateWalkMinutes(legs, isFromHome);
+
+    const stop = csvRoute
+      ? csvRoute.stop
+      : normalizeStopNameForLine(
+          extractStopNameFromLeg(firstLeg, payload),
+          line
+        );
+
+    const getoff = csvRoute
+      ? csvRoute.getoff
+      : normalizeStopNameForLine(
+          lastLeg?.to?.name ||
+          lastLeg?.arrival?.stop?.name ||
+          lastLeg?.destination?.name ||
+          payload?.to?.name ||
+          "到着地",
+          line
+        );
 
     const finishMin = isFromHome ? arriveMin : arriveMin + walkMin;
+
     return {
       line,
       group: grp(line),
@@ -264,6 +407,7 @@ function toApiCandidates(payload, mode, startMin, isFromHome) {
     .sort((a, b) => a.finishMin - b.finishMin || toMin(a.depart) - toMin(b.depart));
 }
 
+
 async function resolvePlaceEndpointByName(name) {
   const key = normalizeStopName(name);
   if (_endpointCache.has(key)) return _endpointCache.get(key);
@@ -276,13 +420,76 @@ async function resolvePlaceEndpointByName(name) {
 
   const data = await res.json();
   const places = Array.isArray(data?.places) ? data.places : [];
+
+  console.log(`[resolvePlaceEndpointByName] query="${key}" candidates:`, places);
+
   if (places.length === 0) {
     throw new Error(`No endpoint for place: ${key}`);
   }
 
-  const exact = places.find(p => normalizeStopName(p?.name) === key && (p?.kind === "stop" || p?.kind === "station"));
-  const preferred = exact || places.find(p => p?.kind === "stop" || p?.kind === "station") || places[0];
-  const endpoint = preferred?.endpoint || null;
+  // -----------------------------
+  // 1. 完全一致（stop優先）
+  // -----------------------------
+  const exactStop = places.find(
+    p => normalizeStopName(p?.name) === key && p?.kind === "stop"
+  );
+
+  if (exactStop) {
+    console.log(`[resolvePlaceEndpointByName] "${key}" selected (exactStop):`, exactStop);
+    _endpointCache.set(key, exactStop.endpoint);
+    return exactStop.endpoint;
+  }
+
+  // -----------------------------
+  // 2. 完全一致（kind問わず）
+  // -----------------------------
+  const exactAny = places.find(
+    p => normalizeStopName(p?.name) === key
+  );
+
+  if (exactAny) {
+    console.log(`[resolvePlaceEndpointByName] "${key}" selected (exactAny):`, exactAny);
+    _endpointCache.set(key, exactAny.endpoint);
+    return exactAny.endpoint;
+  }
+
+  // -----------------------------
+  // 3. 部分一致（stop優先）
+  // -----------------------------
+  const partialStop = places.find(
+    p => p?.kind === "stop" && normalizeStopName(p?.name).includes(key)
+  );
+
+  if (partialStop) {
+    console.log(`[resolvePlaceEndpointByName] "${key}" selected (partialStop):`, partialStop);
+    _endpointCache.set(key, partialStop.endpoint);
+    return partialStop.endpoint;
+  }
+
+  // -----------------------------
+  // 4. CSV に存在する停留所名と最も近い候補を選ぶ
+  // -----------------------------
+  const csvStops = routes.map(r => normalizeStopName(r.stop));
+  const csvGetoffs = routes.map(r => normalizeStopName(r.getoff));
+  const csvNames = new Set([...csvStops, ...csvGetoffs]);
+
+  const csvMatch = places.find(
+    p => csvNames.has(normalizeStopName(p?.name))
+  );
+
+  if (csvMatch) {
+    console.log(`[resolvePlaceEndpointByName] "${key}" selected (csvMatch):`, csvMatch);
+    _endpointCache.set(key, csvMatch.endpoint);
+    return csvMatch.endpoint;
+  }
+
+  // -----------------------------
+  // 5. fallback: 最初の候補
+  // -----------------------------
+  const preferred = places[0];
+  console.log(`[resolvePlaceEndpointByName] "${key}" selected (fallback):`, preferred);
+
+  const endpoint = preferred?.endpoint;
   if (!endpoint) {
     throw new Error(`No endpoint field for place: ${key}`);
   }
@@ -290,6 +497,7 @@ async function resolvePlaceEndpointByName(name) {
   _endpointCache.set(key, endpoint);
   return endpoint;
 }
+
 
 async function loadCandidatesFromTransitAPI(mode, dt, startMin, isFromHome) {
   const q = API_MODE_QUERY[mode];
@@ -336,7 +544,7 @@ async function loadCandidatesFromTransitAPI(mode, dt, startMin, isFromHome) {
 
       const payload = await res.json();
       const candidates = toApiCandidates(payload, mode, startMin, isFromHome)
-        .map(c => ({ ...c, stop: normalizeStopName(c.stop), getoff: normalizeStopName(c.getoff) }));
+        .map(c => ({ ...c, stop: normalizeStopNameForLine(c.stop, c.line), getoff: normalizeStopNameForLine(c.getoff, c.line) }));
       allCandidates.push(...candidates);
     }
 
@@ -479,7 +687,7 @@ function buildAllCandidates(mode, dayType, startMin) {
 }
 
 // ---- 系統グループ別の最速1件 ----
-function buildGroupBestFromAll(allCandidates, baseMin) {
+function buildGroupBestFromAll(allCandidates, baseMin, isFromHome) {
   const best = {};
 
   // メイン便が23:00以降かどうか
@@ -487,8 +695,9 @@ function buildGroupBestFromAll(allCandidates, baseMin) {
 
   allCandidates
     .filter(c => {
-      // baseMin 以降の便だけ
-      if (toMin(c.depart) < baseMin) return false;
+      // 家→駅の場合はバス停までの徒歩時間を考慮し、実際に乗車可能な便だけを対象にする
+      const departThreshold = isFromHome ? baseMin + c.walk : baseMin;
+      if (toMin(c.depart) < departThreshold) return false;
 
       // 深夜便は「メイン便が23:00以降のときだけ」表示
       if (c.line === "深夜" && !showMidnight) return false;
@@ -570,7 +779,7 @@ async function renderAll(focusCandidate, isFromHome, label) {
     baseMin = toMin(focusCandidate.depart);
   }
 
-  const groupBest = buildGroupBestFromAll(_allCandidates, baseMin);
+  const groupBest = buildGroupBestFromAll(_allCandidates, baseMin, isFromHome);
 
   const groupsEl = document.getElementById("groupCards");
   groupsEl.innerHTML = "";
