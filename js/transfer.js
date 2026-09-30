@@ -201,7 +201,13 @@ function syncDepartureDateTimeFromManual() {
   input.value = parsed;
   return true;
 }
-function grp(line) { return line.replace(/-\d+$/, ""); }
+function normalizeRouteLine(line) {
+  return String(line || "")
+    .replace(/[０-９]/g, digit => String.fromCharCode(digit.charCodeAt(0) - 0xFEE0))
+    .replace(/[－−–—]/g, "-");
+}
+
+function grp(line) { return normalizeRouteLine(line).replace(/-\d+$/, ""); }
 
 function safeNum(v) {
   const n = Number(v);
@@ -356,7 +362,7 @@ function findCsvRouteForLine(mode, line) {
   if (!line) return null;
 
   // 全角 → 半角
-  const normalizedLine = line.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+  const normalizedLine = normalizeRouteLine(line);
 
   // 数字抽出（例：清61 → 61）
   const numMatch = normalizedLine.match(/\d+/);
@@ -460,7 +466,7 @@ function toApiCandidates(payload, mode, dt, startMin, isFromHome) {
       csvLines.some(csv => raw.includes(csv))
     );
 
-    const line = matchedCsvLine || rawLineCandidates[0] || "不明系統";
+    const line = normalizeRouteLine(matchedCsvLine || rawLineCandidates[0] || "不明系統");
 
     // -----------------------------
     // CSV の route が見つかればそれを優先
