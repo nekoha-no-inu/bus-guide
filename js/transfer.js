@@ -15,6 +15,7 @@ const API_MODE_QUERY = {
   "清瀬駅→自宅": { station: "清瀬駅北口" },
   "新座駅→自宅": { station: "新座駅南口" },
 };
+const SEIBU_ROUTE_GROUPS = ["清61", "清62", "清63", "清64"];
 const _endpointCache = new Map();
 
 let holidayList = [];
@@ -22,6 +23,7 @@ let routes      = [];
 let schedules   = [];
 
 let _allCandidates  = [];
+let _csvGroupCandidates = [];
 let _allIndex       = 0;
 let _lastMode       = "";
 let _lastDayType    = "";
@@ -798,33 +800,49 @@ function buildAllCandidates(mode, dayType, startMin) {
 }
 
 // ---- 系統グループ別の最速1件 ----
-function buildGroupBestFromAll(allCandidates, baseMin, isFromHome) {
-  const best = {};
-
+function buildGroupBestFromAll(allCandidates, baseMin, isFromHome, fallbackCandidates = []) {
   // メイン便が23:00以降かどうか
   const showMidnight = baseMin >= 23 * 60;
 
-  allCandidates
-    .filter(c => {
+  const collectByGroup = candidates => {
+    const grouped = new Map();
+    candidates.forEach(c => {
       // 家→駅の場合はバス停までの徒歩時間を考慮し、実際に乗車可能な便だけを対象にする
       const departThreshold = isFromHome ? baseMin + c.walk : baseMin;
-      if ((c.departMin ?? toMin(c.depart)) < departThreshold) return false;
+      if ((c.departMin ?? toMin(c.depart)) < departThreshold) return;
 
       // 深夜便は「メイン便が23:00以降のときだけ」表示
-      if (c.line === "深夜" && !showMidnight) return false;
+      if (c.line === "深夜" && !showMidnight) return;
 
-      return true;
-    })
-    .forEach(c => {
       const g = grp(c.line);
-      if (!best[g] || c.finishMin < best[g].finishMin) {
-        best[g] = c;
-      }
+      if (!grouped.has(g)) grouped.set(g, []);
+      grouped.get(g).push(c);
     });
+    return grouped;
+  };
 
-  addRouteDecisionLog("系統別候補を決定", Object.fromEntries(Object.entries(best).map(([group, c]) => [group, {
+  const primaryByGroup = collectByGroup(allCandidates);
+  const fallbackByGroup = collectByGroup(fallbackCandidates);
+  const groupNames = new Set([
+    ...SEIBU_ROUTE_GROUPS,
+    ...primaryByGroup.keys(),
+    ...fallbackByGroup.keys(),
+  ]);
+
+  const best = {};
+  groupNames.forEach(group => {
+    const candidates = primaryByGroup.get(group) || fallbackByGroup.get(group) || [];
+    if (candidates.length === 0) {
+      best[group] = null;
+    } else {
+      best[group] = candidates.reduce((fastest, candidate) =>
+        !fastest || candidate.finishMin < fastest.finishMin ? candidate : fastest, null);
+    }
+  });
+
+  addRouteDecisionLog("系統別候補を決定", Object.fromEntries(Object.entries(best).map(([group, c]) => [group, c ? {
     line: c.line, depart: c.depart, arrive: c.arrive, finishMin: c.finishMin,
-  }])));
+  } : "候補なし"])));
   return best;
 }
 
@@ -903,7 +921,7 @@ async function renderAll(focusCandidate, isFromHome, label) {
     baseMin = focusCandidate.departMin ?? toMin(focusCandidate.depart);
   }
 
-  const groupBest = buildGroupBestFromAll(_allCandidates, baseMin, isFromHome);
+  const groupBest = buildGroupBestFromAll(_allCandidates, baseMin, isFromHome, _csvGroupCandidates);
 
   const groupsEl = document.getElementById("groupCards");
   groupsEl.innerHTML = "";
@@ -913,7 +931,7 @@ async function renderAll(focusCandidate, isFromHome, label) {
     card.className = "group-card";
     card.innerHTML = `
       <div class="group-header"><span class="group-title">${g} 系統</span></div>
-      <div class="group-body">${groupCardBody(c, isFromHome)}</div>
+      <div class="group-body">${c ? groupCardBody(c, isFromHome) : '<div class="group-empty">この方向・時刻の候補はありません</div>'}</div>
     `;
     groupsEl.appendChild(card);
   });
@@ -948,6 +966,7 @@ async function searchBus() {
   _initialStartMin = startMin;
 
   const csvCandidates = buildAllCandidates(mode, dayType, startMin);
+  _csvGroupCandidates = csvCandidates;
   const isDayTypeOverride = dayType !== calendarDayType;
   let apiCandidates = [];
   if (isDayTypeOverride) {
@@ -1016,7 +1035,7 @@ async function showNextBus() {
 
 // ---- 初期化 ----
 
-window.addEventListener("load", async () => {
+async function initializeTransferPage() {
   setBubbleSpeech("行き先と日時を選んで検索してね！");
   await Promise.all([loadCSV(), loadHolidays()]);
   const datetimeInput = document.getElementById("datetime");
@@ -1057,4 +1076,10 @@ window.addEventListener("load", async () => {
   document.getElementById("prevBtn").addEventListener("click", showPrevBus);
   document.getElementById("nextBtn").addEventListener("click", showNextBus);
   document.getElementById("routeDecisionLogButton").addEventListener("click", toggleRouteDecisionLogs);
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initializeTransferPage, { once: true });
+} else {
+  initializeTransferPage();
+}

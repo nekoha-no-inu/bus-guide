@@ -197,6 +197,10 @@
 </section>
 
 <script src="js/common.js"></script>
-<script src="js/transfer.js?v=d797ae1"></script>
+<script>
+  const transferScript = document.createElement("script");
+  transferScript.src = `js/transfer.js?v=${Date.now()}`;
+  document.body.appendChild(transferScript);
+</script>
 </body>
 </html>
