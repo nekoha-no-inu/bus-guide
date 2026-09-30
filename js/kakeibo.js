@@ -7,6 +7,7 @@ const KAKEIBO_STORAGE_KEYS = {
   LAST_INPUT_DATE: "kakeibo.lastInputDate",
   SELECTED_MONTH: "kakeibo.selectedMonth",
   DETAIL_INLINE_INPUT: "kakeibo.detailInlineInput",
+  FIXED_COSTS: "kakeibo.fixedCosts",
 };
 
 // ---- レコード取得（月別） ----
@@ -434,6 +435,7 @@ async function loadKakeiboDetailList() {
 
   try {
     const records = await fetchAllRecords(filters);
+    renderMonthlyExpenseChart(records, filters.yearMonth);
     list.innerHTML = "";
 
     const expense = records.filter(r => r.type === "支出").reduce((s, r) => s + Number(r.amount), 0);
@@ -462,7 +464,7 @@ async function loadKakeiboDetailList() {
       div.innerHTML = `
         <div class="detail-top">
           <div>
-            <div class="detail-date">${r.date}　${r.person}</div>
+            <div class="detail-date">${formatDateJapanese(r.date)}　${r.person}</div>
             <div class="detail-desc">${r.description}</div>
             <div class="detail-meta">${r.category}${r.subcategory ? " › " + r.subcategory : ""}</div>
           </div>
@@ -480,12 +482,191 @@ async function loadKakeiboDetailList() {
   }
 }
 
+function renderMonthlyExpenseChart(records, yearMonth) {
+  const chart = document.getElementById("monthlyExpenseChart");
+  const title = document.getElementById("monthlyExpenseTitle");
+  if (!chart || !yearMonth) return;
+
+  if (title) title.textContent = `${yearMonth.replace("-", "年")}月の日別支出`;
+  const [year, month] = yearMonth.split("-").map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const dailyExpenses = Array(daysInMonth).fill(0);
+  records.filter(record => record.type === "支出").forEach(record => {
+    const day = Number(record.date.slice(-2));
+    if (day >= 1 && day <= daysInMonth) dailyExpenses[day - 1] += Number(record.amount) || 0;
+  });
+
+  const maxExpense = Math.max(...dailyExpenses);
+  if (maxExpense <= 0) {
+    chart.innerHTML = '<div class="chart-empty">この月の支出データはありません。</div>';
+    return;
+  }
+
+  const rawStep = maxExpense / 4;
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+  const normalizedStep = rawStep / magnitude;
+  const stepFactor = normalizedStep <= 1 ? 1 : normalizedStep <= 2 ? 2 : normalizedStep <= 5 ? 5 : 10;
+  const tickStep = Math.max(1, stepFactor * magnitude);
+  const axisMaximum = Math.ceil(maxExpense / tickStep) * tickStep;
+  const tickCount = Math.round(axisMaximum / tickStep);
+
+  const width = 720;
+  const height = 220;
+  const left = 62;
+  const right = 12;
+  const top = 12;
+  const bottom = 34;
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
+  const pointX = day => left + ((day - 1) / Math.max(daysInMonth - 1, 1)) * plotWidth;
+  const pointY = amount => top + plotHeight - (amount / axisMaximum) * plotHeight;
+  const grid = Array.from({ length: tickCount + 1 }, (_, index) => {
+    const amount = axisMaximum - tickStep * index;
+    const y = top + plotHeight * index / tickCount;
+    return `<line class="chart-grid" x1="${left}" y1="${y}" x2="${width - right}" y2="${y}"></line><text class="chart-axis-label" x="${left - 8}" y="${y + 4}" text-anchor="end">${Math.round(amount).toLocaleString()}</text>`;
+  }).join("");
+  const points = dailyExpenses.map((amount, index) => `${pointX(index + 1)},${pointY(amount)}`).join(" ");
+  const markers = dailyExpenses.map((amount, index) =>
+    `<circle class="chart-point" cx="${pointX(index + 1)}" cy="${pointY(amount)}" r="3"><title>${index + 1}日: ${fmt(amount)}</title></circle>`
+  ).join("");
+  const dayLabels = Array.from({ length: daysInMonth }, (_, index) => index + 1)
+    .filter(day => day === 1 || day % 5 === 0 || day === daysInMonth)
+    .map(day => `<text class="chart-axis-label" x="${pointX(day)}" y="${height - 10}" text-anchor="middle">${day}日</text>`)
+    .join("");
+
+  chart.innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${yearMonth}の日別支出額の折れ線グラフ">${grid}<polyline class="chart-line" points="${points}"></polyline>${markers}${dayLabels}</svg>`;
+}
+
+function formatDateJapanese(date) {
+  const match = String(date || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[1]}/${match[2]}/${match[3]}` : String(date || "日付を選択");
+}
+
+function formatMonthJapanese(yearMonth) {
+  const match = String(yearMonth || "").match(/^(\d{4})-(\d{2})$/);
+  return match ? `${match[1]}年${Number(match[2])}月` : "月を選択";
+}
+
+function updateLocalizedDateDisplay(input) {
+  const display = document.getElementById(`${input.id}-display`);
+  if (!display) return;
+  display.textContent = input.type === "month"
+    ? formatMonthJapanese(input.value)
+    : formatDateJapanese(input.value);
+}
+
+function initLocalizedDateDisplays() {
+  ["f-month", "d-date", "m-date"].forEach(id => {
+    const input = document.getElementById(id);
+    if (!input) return;
+    input.addEventListener("input", () => updateLocalizedDateDisplay(input));
+    input.addEventListener("change", () => updateLocalizedDateDisplay(input));
+    updateLocalizedDateDisplay(input);
+  });
+}
+
+function getFixedCostTemplates() {
+  try {
+    const templates = JSON.parse(localStorage.getItem(KAKEIBO_STORAGE_KEYS.FIXED_COSTS) || "[]");
+    return Array.isArray(templates) ? templates : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveFixedCostTemplates(templates) {
+  localStorage.setItem(KAKEIBO_STORAGE_KEYS.FIXED_COSTS, JSON.stringify(templates));
+}
+
+function renderFixedCostTemplates() {
+  const list = document.getElementById("fixedCostList");
+  const select = document.getElementById("fixedCostSelect");
+  if (!list || !select) return;
+
+  const templates = getFixedCostTemplates();
+  select.replaceChildren(new Option("固定費を選択", ""));
+  list.replaceChildren();
+
+  if (templates.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "fixed-cost-empty";
+    empty.textContent = "固定費を登録してください。";
+    list.appendChild(empty);
+  }
+
+  templates.forEach((template, index) => {
+    select.add(new Option(`${template.description}（${template.day || "?"}日・${Number(template.amount).toLocaleString()}円）`, String(index)));
+    const row = document.createElement("div");
+    row.className = "fixed-cost-item";
+    const label = document.createElement("span");
+    label.textContent = `${template.description} / ${template.subcategory} / ${template.day || "?"}日 / ${Number(template.amount).toLocaleString()}円 / ${template.person}`;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "削除";
+    remove.setAttribute("aria-label", `${template.description}を固定費リストから削除`);
+    remove.addEventListener("click", () => {
+      templates.splice(index, 1);
+      saveFixedCostTemplates(templates);
+      renderFixedCostTemplates();
+    });
+    row.append(label, remove);
+    list.appendChild(row);
+  });
+}
+
+function saveFixedCostTemplate() {
+  const description = document.getElementById("fixedCostDescription").value.trim();
+  const subcategory = document.getElementById("fixedCostSubcategory").value;
+  const day = parseInt(document.getElementById("fixedCostDay").value, 10);
+  const amount = parseInt(document.getElementById("fixedCostAmount").value, 10);
+  const person = document.getElementById("fixedCostPerson").value;
+  if (!description || !Number.isInteger(day) || day < 1 || day > 31 || !Number.isFinite(amount) || amount <= 0) {
+    setBubbleSpeech("内容・日付・金額を入力してね。");
+    return;
+  }
+
+  const templates = getFixedCostTemplates();
+  templates.push({ description, category: "固定費", subcategory, day, amount, person });
+  saveFixedCostTemplates(templates);
+  document.getElementById("fixedCostDescription").value = "";
+  document.getElementById("fixedCostDay").value = "";
+  document.getElementById("fixedCostAmount").value = "";
+  renderFixedCostTemplates();
+}
+
+function transferSelectedFixedCost() {
+  const selectedIndex = document.getElementById("fixedCostSelect").value;
+  const template = getFixedCostTemplates()[Number(selectedIndex)];
+  if (!template) {
+    setBubbleSpeech("転記する固定費を選んでね。");
+    return;
+  }
+
+  document.getElementById("d-type").value = "支出";
+  onDetailInlineTypeChange();
+  const dateInput = document.getElementById("d-date");
+  const selectedMonth = document.getElementById("f-month").value || (dateInput.value || defaultInputDate()).slice(0, 7);
+  const [year, month] = selectedMonth.split("-").map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  const fallbackDay = Number((dateInput.value || defaultInputDate()).slice(-2));
+  const day = Math.min(Number(template.day) || fallbackDay, lastDay);
+  dateInput.value = `${selectedMonth}-${String(day).padStart(2, "0")}`;
+  updateLocalizedDateDisplay(dateInput);
+  document.getElementById("d-category").value = "固定費";
+  document.getElementById("d-subcategory").value = template.subcategory;
+  document.getElementById("d-description").value = template.description;
+  document.getElementById("d-amount").value = template.amount;
+  document.getElementById("d-person").value = template.person;
+  setBubbleSpeech(`${template.description}を入力欄に転記したよ。`);
+}
+
 function openEdit(firestoreId) {
   editingFirestoreId = firestoreId;
   db.collection("kakeibo").doc(firestoreId).get().then(doc => {
     if (!doc.exists) return;
     const r = doc.data();
     document.getElementById("m-date").value        = r.date;
+    updateLocalizedDateDisplay(document.getElementById("m-date"));
     document.getElementById("m-type").value        = r.type;
     document.getElementById("m-category").value    = r.category;
     document.getElementById("m-subcategory").value = r.subcategory || "";
@@ -562,6 +743,8 @@ function initKakeiboDetailPage() {
   const inlineSubmitBtn = document.getElementById("d-submitBtn");
   const inlineClearBtn = document.getElementById("d-clearBtn");
   const inlineTypeEl = document.getElementById("d-type");
+  const fixedCostSaveBtn = document.getElementById("fixedCostSaveBtn");
+  const fixedCostTransferBtn = document.getElementById("fixedCostTransferBtn");
 
   if (!filterBtn || !listEl) return;
 
@@ -595,6 +778,9 @@ function initKakeiboDetailPage() {
   }
 
   if (inlineSubmitBtn) inlineSubmitBtn.addEventListener("click", submitDetailInlineForm);
+  if (fixedCostSaveBtn) fixedCostSaveBtn.addEventListener("click", saveFixedCostTemplate);
+  if (fixedCostTransferBtn) fixedCostTransferBtn.addEventListener("click", transferSelectedFixedCost);
+  renderFixedCostTemplates();
   if (inlineClearBtn) {
     inlineClearBtn.addEventListener("click", () => {
       const dDesc = document.getElementById("d-description");
@@ -615,6 +801,7 @@ function initKakeiboDetailPage() {
   if (closeBtn) closeBtn.addEventListener("click", closeModal);
 
   setDefaultMonth();
+  initLocalizedDateDisplays();
   loadKakeiboDetailList();
 }
 

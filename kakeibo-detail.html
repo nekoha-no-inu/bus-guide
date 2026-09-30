@@ -27,8 +27,24 @@
 .inline-input-btns button { flex:1; width:auto; border:none; border-radius:8px; padding:10px; font-size:14px; cursor:pointer; }
 .inline-input-btns .submit { background:#4caf50; color:#fff; }
 .inline-input-btns .clear { background:#999; color:#fff; }
+.fixed-cost-section { border-top:1px solid #eee; margin-top:14px; padding-top:12px; }
+.fixed-cost-section h4 { margin:0 0 8px; font-size:14px; }
+.fixed-cost-list { display:grid; gap:6px; margin:8px 0; }
+.fixed-cost-item { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:7px 8px; border:1px solid #eee; border-radius:6px; font-size:12px; }
+.fixed-cost-item span { min-width:0; overflow-wrap:anywhere; }
+.fixed-cost-item button { flex-shrink:0; width:auto; padding:3px 7px; border:1px solid #c44; border-radius:5px; background:#fff; color:#c44; font-size:11px; cursor:pointer; }
+.fixed-cost-empty { color:#888; font-size:12px; margin:6px 0; }
+.fixed-cost-section .fixed-cost-register { width:100%; margin-top:8px; padding:8px; border:0; border-radius:6px; background:#555; color:#fff; font-size:13px; cursor:pointer; }
 .detail-total { background:#fff; border-radius:8px; padding:10px 12px; margin:8px 0; box-shadow:0 1px 3px rgba(0,0,0,.08); font-weight:bold; display:flex; justify-content:space-between; align-items:center; }
 .detail-total span { font-size:14px; }
+.monthly-expense-chart { background:#fff; border-radius:8px; padding:12px; margin:10px 0; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+.monthly-expense-chart h2 { margin:0 0 8px; font-size:15px; }
+.monthly-expense-chart svg { display:block; width:100%; height:auto; overflow:visible; }
+.monthly-expense-chart .chart-grid { stroke:#e8e8e8; stroke-width:1; }
+.monthly-expense-chart .chart-axis-label { fill:#777; font-size:11px; }
+.monthly-expense-chart .chart-line { fill:none; stroke:#e76f51; stroke-width:3; stroke-linejoin:round; stroke-linecap:round; }
+.monthly-expense-chart .chart-point { fill:#fff; stroke:#e76f51; stroke-width:2; }
+.monthly-expense-chart .chart-empty { color:#888; text-align:center; padding:18px 0; font-size:13px; }
 .detail-item { background:#fff; border-radius:8px; margin:6px 0; padding:10px 12px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
 .detail-top  { display:flex; justify-content:space-between; align-items:flex-start; }
 .detail-date { font-size:12px; color:#888; }
@@ -51,6 +67,14 @@
 .btn-save   { background:#4caf50; color:#fff; }
 .btn-delete { background:#e74c3c; color:#fff; }
 .btn-cancel { background:#999;    color:#fff; }
+.localized-date-control { position:relative; display:block; min-width:0; }
+.localized-date-display { display:flex; align-items:center; box-sizing:border-box; width:100%; min-height:36px; padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff; color:#222; font-size:14px; pointer-events:none; }
+#filterRow .localized-date-control { flex:1; min-width:110px; }
+#filterRow .localized-date-display { min-height:30px; padding:6px; font-size:13px; }
+.localized-date-control > input.localized-native-date { position:absolute; inset:0; z-index:2; width:100%; height:100%; margin:0; padding:0; box-sizing:border-box; opacity:0; cursor:pointer; }
+.localized-date-control:focus-within .localized-date-display { outline:2px solid #4caf50; outline-offset:1px; }
+.inline-input-card .localized-date-control > input.localized-native-date { min-width:0; }
+#modal .localized-date-control > input.localized-native-date { min-width:0; }
 #loading { text-align:center; color:#999; padding:20px; }
 @media (max-width: 980px) {
   .detail-layout.split { grid-template-columns: 1fr; }
@@ -68,7 +92,10 @@
 </div>
 
 <div id="filterRow">
-  <input type="month" id="f-month">
+  <div class="localized-date-control">
+    <input type="month" id="f-month" class="localized-native-date" aria-label="対象月">
+    <span id="f-month-display" class="localized-date-display" aria-hidden="true"></span>
+  </div>
 
   <select id="f-type">
     <option value="">全種別</option>
@@ -108,6 +135,10 @@
 <div id="detailLayout" class="detail-layout">
   <div class="detail-list-pane">
     <div id="detailTotal" class="detail-total">合計：0円</div>
+    <section class="monthly-expense-chart" aria-labelledby="monthlyExpenseTitle">
+      <h2 id="monthlyExpenseTitle">月ごとの支出</h2>
+      <div id="monthlyExpenseChart" aria-live="polite"><div class="chart-empty">読み込み中…</div></div>
+    </section>
     <div id="list"><div id="loading">読み込み中…</div></div>
   </div>
 
@@ -115,8 +146,11 @@
     <div class="inline-input-card">
       <h3>この画面で入力</h3>
 
-      <label>日付</label>
-      <input type="date" id="d-date">
+      <label for="d-date">日付</label>
+      <div class="localized-date-control">
+        <input type="date" id="d-date" class="localized-native-date" aria-label="入力日">
+        <span id="d-date-display" class="localized-date-display" aria-hidden="true"></span>
+      </div>
 
       <label>種別</label>
       <select id="d-type">
@@ -148,6 +182,33 @@
         <button id="d-submitBtn" class="submit">✅ 追加</button>
         <button id="d-clearBtn" class="clear" type="button">クリア</button>
       </div>
+
+      <section class="fixed-cost-section" aria-labelledby="fixedCostTitle">
+        <h4 id="fixedCostTitle">固定費リスト</h4>
+        <div id="fixedCostList" class="fixed-cost-list"></div>
+        <label for="fixedCostSelect">転記する固定費</label>
+        <select id="fixedCostSelect"></select>
+        <button id="fixedCostTransferBtn" class="fixed-cost-register" type="button">固定費を追加</button>
+        <label for="fixedCostDescription">リストに登録する内容</label>
+        <input type="text" id="fixedCostDescription" placeholder="例：家賃">
+        <label for="fixedCostSubcategory">小項目</label>
+        <select id="fixedCostSubcategory">
+          <option value="住居費">住居費</option>
+          <option value="水道光熱費">水道光熱費</option>
+          <option value="通信費">通信費</option>
+          <option value="保険料">保険料</option>
+        </select>
+        <label for="fixedCostDay">日付（日のみ）</label>
+        <input type="number" id="fixedCostDay" min="1" max="31" step="1" inputmode="numeric" placeholder="例：27">
+        <label for="fixedCostAmount">金額（円）</label>
+        <input type="number" id="fixedCostAmount" min="1" placeholder="例：80000">
+        <label for="fixedCostPerson">出した人</label>
+        <select id="fixedCostPerson">
+          <option value="みき">みき</option>
+          <option value="みほ">みほ</option>
+        </select>
+        <button id="fixedCostSaveBtn" class="fixed-cost-register" type="button">リストに登録</button>
+      </section>
     </div>
   </aside>
 </div>
@@ -156,7 +217,11 @@
 <div id="modal-overlay">
   <div id="modal">
     <h3 style="margin:0 0 10px;font-size:16px;">明細を編集</h3>
-    <label>日付</label><input type="date" id="m-date">
+    <label for="m-date">日付</label>
+    <div class="localized-date-control">
+      <input type="date" id="m-date" class="localized-native-date" aria-label="明細の日付">
+      <span id="m-date-display" class="localized-date-display" aria-hidden="true"></span>
+    </div>
     <label>種別</label>
     <select id="m-type">
       <option value="支出">支出</option>

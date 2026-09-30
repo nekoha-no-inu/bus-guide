@@ -45,6 +45,88 @@
     opacity: 0.3;
     cursor: default;
   }
+  #routeDecisionLogButton {
+    margin-top: 20px;
+    padding: 10px 14px;
+    width: auto;
+    border: 1px solid #777;
+    border-radius: 6px;
+    background: #f5f5f5;
+    color: #333;
+    cursor: pointer;
+  }
+  #routeDecisionLogPanel {
+    margin-top: 10px;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fafafa;
+  }
+  #routeDecisionLogPanel h2 { margin: 0 0 8px; font-size: 16px; }
+  #routeDecisionLogOutput {
+    max-height: 360px;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: 12px/1.5 Consolas, monospace;
+  }
+  .departure-datetime-control {
+    position: relative;
+    display: block;
+    width: 100%;
+    min-height: 42px;
+    margin: 5px 0;
+  }
+  #datetimeDisplay {
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 42px;
+    padding: 10px;
+    border: 1px solid var(--border-color, #333);
+    border-radius: 8px;
+    background: #fff;
+    color: #222;
+    font-size: 16px;
+    pointer-events: none;
+  }
+  #datetime {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .departure-datetime-control:focus-within #datetimeDisplay {
+    outline: 2px solid #4caf50;
+    outline-offset: 1px;
+  }
+  #timetableDayButtons {
+    display: flex;
+    gap: 8px;
+    margin: 10px 0;
+  }
+  #timetableDayButtons button {
+    flex: 1;
+    width: auto;
+    margin: 0;
+    padding: 9px 6px;
+    border: 1px solid #4a90e2;
+    border-radius: 6px;
+    background: #fff;
+    color: #357ac8;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  #timetableDayButtons button.active {
+    background: #4a90e2;
+    color: #fff;
+  }
 </style>
 </head>
 <body>
@@ -69,7 +151,10 @@
 <!-- 検索フォーム -->
 <div id="controls">
   <label>出発日時：
-    <input type="datetime-local" id="datetime">
+    <span class="departure-datetime-control">
+      <input type="datetime-local" id="datetime" aria-label="出発日時">
+      <span id="datetimeDisplay" aria-hidden="true">日時を選択</span>
+    </span>
   </label>
   <button id="nowButton">現在時刻に更新</button>
 
@@ -80,6 +165,12 @@
     <button data-mode="新座駅→自宅">新座駅→自宅</button>
   </div>
 
+  <div id="timetableDayButtons" role="group" aria-label="使用する曜日ダイヤ">
+    <button type="button" data-day-type="平日" aria-pressed="false">平日</button>
+    <button type="button" data-day-type="土曜" aria-pressed="false">土曜日</button>
+    <button type="button" data-day-type="休日" aria-pressed="false">休日</button>
+  </div>
+
   <button id="searchBtn">🔍 検索</button>
 </div>
 
@@ -87,6 +178,12 @@
 
 <!-- 系統グループカード -->
 <div id="groupCards"></div>
+
+<button type="button" id="routeDecisionLogButton" aria-expanded="false" aria-controls="routeDecisionLogPanel">ルート決定ログを表示</button>
+<section id="routeDecisionLogPanel" hidden aria-labelledby="routeDecisionLogTitle">
+  <h2 id="routeDecisionLogTitle">ルート決定ログ</h2>
+  <pre id="routeDecisionLogOutput">検索すると、ルート選択の過程がここに表示されます。</pre>
+</section>
 
 <script src="js/common.js"></script>
 <script src="js/transfer.js"></script>

@@ -364,17 +364,32 @@ label {
 }
 
 .calendar-toolbar {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: center;
   gap: 12px;
   margin: 12px 0;
 }
 
+.calendar-toolbar > * {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-size: 14px;
+}
+
 .calendar-toolbar .action-btn {
-  min-width: 80px;
-  padding: 8px 12px;
-  font-size: 13px;
+  padding: 0 8px;
+}
+
+.calendar-toolbar #currentMonthLabel {
+  padding: 0 4px;
+  line-height: 1;
 }
 
 .calendar-grid {

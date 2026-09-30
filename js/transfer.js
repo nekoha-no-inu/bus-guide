@@ -28,6 +28,46 @@ let _lastDayType    = "";
 let _lastIsFromHome = true;
 let _initialStartMin = 0;
 let _lastDataSource  = "CSV";
+let _routeDecisionLogs = [];
+let _selectedDayType = null;
+
+function addRouteDecisionLog(message, details = null) {
+  const time = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const detailText = details === null ? "" : `\n${JSON.stringify(details, null, 2)}`;
+  _routeDecisionLogs.push(`[${time}] ${message}${detailText}`);
+  if (_routeDecisionLogs.length > 300) _routeDecisionLogs.shift();
+  renderRouteDecisionLogs();
+}
+
+function renderRouteDecisionLogs() {
+  const output = document.getElementById("routeDecisionLogOutput");
+  if (output) output.textContent = _routeDecisionLogs.join("\n\n");
+}
+
+function toggleRouteDecisionLogs() {
+  const panel = document.getElementById("routeDecisionLogPanel");
+  const button = document.getElementById("routeDecisionLogButton");
+  if (!panel || !button) return;
+  panel.hidden = !panel.hidden;
+  button.setAttribute("aria-expanded", String(!panel.hidden));
+  button.textContent = panel.hidden ? "ルート決定ログを表示" : "ルート決定ログを隠す";
+  renderRouteDecisionLogs();
+}
+
+function setSelectedDayType(dayType) {
+  _selectedDayType = dayType;
+  document.querySelectorAll("#timetableDayButtons button").forEach(button => {
+    const selected = button.dataset.dayType === dayType;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+}
+
+function refreshDayTypeFromDate() {
+  const datetimeValue = document.getElementById("datetime")?.value;
+  if (!datetimeValue) return;
+  setSelectedDayType(getDayType(new Date(datetimeValue)));
+}
 
 // ---- データ読み込み ----
 
@@ -120,11 +160,21 @@ function toMin(t) {
   return h * 60 + m;
 }
 function toTime(m) {
-  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const dayMin = ((m % (24 * 60)) + (24 * 60)) % (24 * 60);
+  return `${String(Math.floor(dayMin / 60)).padStart(2, "0")}:${String(dayMin % 60).padStart(2, "0")}`;
 }
 function fmtDTL(date) {
   const p = n => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${p(date.getMonth()+1)}-${p(date.getDate())}T${p(date.getHours())}:${p(date.getMinutes())}`;
+}
+function formatDepartureDateTime(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  return match ? `${match[1]}/${match[2]}/${match[3]} ${match[4]}:${match[5]}` : "日時を選択";
+}
+function updateDepartureDateTimeDisplay() {
+  const input = document.getElementById("datetime");
+  const display = document.getElementById("datetimeDisplay");
+  if (input && display) display.textContent = formatDepartureDateTime(input.value);
 }
 function grp(line) { return line.replace(/-\d+$/, ""); }
 
@@ -135,6 +185,10 @@ function safeNum(v) {
 
 function parseApiTimeToMin(value) {
   if (typeof value === "number" && Number.isFinite(value)) {
+    if (value > 24 * 60 * 60) {
+      const timestamp = new Date(value > 1e11 ? value : value * 1000);
+      if (!Number.isNaN(timestamp.getTime())) return timestamp.getHours() * 60 + timestamp.getMinutes();
+    }
     const totalMin = Math.floor(value / 60);
     return ((totalMin % (24 * 60)) + (24 * 60)) % (24 * 60);
   }
@@ -152,6 +206,21 @@ function parseApiTimeToMin(value) {
     return d.getHours() * 60 + d.getMinutes();
   }
   return null;
+}
+
+function parseApiDateTimeOffsetMin(value, referenceDate) {
+  let date = null;
+  if (typeof value === "number" && Number.isFinite(value) && value > 24 * 60 * 60) {
+    date = new Date(value > 1e11 ? value : value * 1000);
+  } else if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    date = new Date(value);
+  }
+  if (!date || Number.isNaN(date.getTime())) return null;
+
+  const referenceDay = Date.UTC(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+  const targetDay = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayOffset = Math.round((targetDay - referenceDay) / (24 * 60 * 60 * 1000));
+  return dayOffset * 24 * 60 + date.getHours() * 60 + date.getMinutes();
 }
 
 function fmtYmd(date) {
@@ -314,7 +383,7 @@ function extractStopNameFromLeg(leg, payload) {
 }
 
 
-function toApiCandidates(payload, mode, startMin, isFromHome) {
+function toApiCandidates(payload, mode, dt, startMin, isFromHome) {
   const journeys = extractTransitJourneys(payload);
   if (journeys.length === 0) return [];
 
@@ -324,18 +393,26 @@ function toApiCandidates(payload, mode, startMin, isFromHome) {
     const firstLeg = transitLegs[0] || null;
     const lastLeg = transitLegs[transitLegs.length - 1] || firstLeg;
 
+    const departValue = firstLeg?.departureSecs ?? firstLeg?.departureTime ?? firstLeg?.departure?.time ??
+      journey?.departureSecs ?? journey?.departureTime ?? journey?.departure?.time;
+    const arriveValue = lastLeg?.arrivalSecs ?? lastLeg?.arrivalTime ?? lastLeg?.arrival?.time ??
+      journey?.arrivalSecs ?? journey?.arrivalTime ?? journey?.arrival?.time;
     const departMin = parseApiTimeToMin(
-      firstLeg?.departureSecs ?? firstLeg?.departureTime ?? firstLeg?.departure?.time ??
-      journey?.departureSecs ?? journey?.departureTime ?? journey?.departure?.time
+      departValue
     );
     const arriveMin = parseApiTimeToMin(
-      lastLeg?.arrivalSecs ?? lastLeg?.arrivalTime ?? lastLeg?.arrival?.time ??
-      journey?.arrivalSecs ?? journey?.arrivalTime ?? journey?.arrival?.time
+      arriveValue
     );
     if (departMin === null || arriveMin === null) return null;
 
     let rideMin = arriveMin - departMin;
     if (rideMin <= 0) rideMin += 24 * 60;
+    const timestampDepartMin = parseApiDateTimeOffsetMin(departValue, dt);
+    const timestampArriveMin = parseApiDateTimeOffsetMin(arriveValue, dt);
+    if (timestampDepartMin !== null && timestampArriveMin !== null) {
+      rideMin = timestampArriveMin - timestampDepartMin;
+      if (rideMin <= 0) rideMin += 24 * 60;
+    }
 
     // -----------------------------
     // ★ 修正：line 名の抽出を強化
@@ -387,24 +464,34 @@ function toApiCandidates(payload, mode, startMin, isFromHome) {
           line
         );
 
-    const finishMin = isFromHome ? arriveMin : arriveMin + walkMin;
+    let departAbsoluteMin = timestampDepartMin ?? departMin;
+    while (departAbsoluteMin < startMin) departAbsoluteMin += 24 * 60;
+    const arriveAbsoluteMin = departAbsoluteMin + rideMin;
+    const finishMin = isFromHome ? arriveAbsoluteMin : arriveAbsoluteMin + walkMin;
 
     return {
       line,
       group: grp(line),
       stop,
       getoff,
-      depart: toTime(departMin),
-      arrive: toTime(arriveMin),
+      depart: toTime(departAbsoluteMin),
+      arrive: toTime(arriveAbsoluteMin),
+      departMin: departAbsoluteMin,
+      arriveMin: arriveAbsoluteMin,
       walk: walkMin,
       ride: rideMin,
       finishMin,
     };
   }).filter(Boolean);
 
-  return built
-    .filter(c => toMin(c.depart) >= startMin)
-    .sort((a, b) => a.finishMin - b.finishMin || toMin(a.depart) - toMin(b.depart));
+  const eligible = built.filter(c => c.departMin >= startMin);
+  addRouteDecisionLog("Transit API候補を解析", {
+    journeyCount: journeys.length,
+    parsedCount: built.length,
+    eligibleCount: eligible.length,
+    candidates: eligible.map(c => ({ line: c.line, stop: c.stop, depart: c.depart, arrive: c.arrive, finishMin: c.finishMin })),
+  });
+  return eligible.sort((a, b) => a.finishMin - b.finishMin || a.departMin - b.departMin);
 }
 
 
@@ -543,7 +630,7 @@ async function loadCandidatesFromTransitAPI(mode, dt, startMin, isFromHome) {
       }
 
       const payload = await res.json();
-      const candidates = toApiCandidates(payload, mode, startMin, isFromHome)
+      const candidates = toApiCandidates(payload, mode, dt, startMin, isFromHome)
         .map(c => ({ ...c, stop: normalizeStopNameForLine(c.stop, c.line), getoff: normalizeStopNameForLine(c.getoff, c.line) }));
       allCandidates.push(...candidates);
     }
@@ -551,10 +638,11 @@ async function loadCandidatesFromTransitAPI(mode, dt, startMin, isFromHome) {
     const deduped = uniqueBy(
       allCandidates,
       c => `${c.line}|${c.stop}|${c.getoff}|${c.depart}|${c.arrive}`
-    ).sort((a, b) => a.finishMin - b.finishMin || toMin(a.depart) - toMin(b.depart));
+    ).sort((a, b) => a.finishMin - b.finishMin || (a.departMin ?? toMin(a.depart)) - (b.departMin ?? toMin(b.depart)));
 
     return deduped;
   } catch (err) {
+    addRouteDecisionLog("Transit API失敗、CSVへ切り替え", { error: String(err) });
     console.warn("Transit API unavailable, fallback to CSV", err);
     return [];
   } finally {
@@ -597,11 +685,11 @@ function urgency(minutes) {
 async function speak(c, isFromHome, label) {
   const dt       = new Date(document.getElementById("datetime").value);
   const startMin = dt.getHours() * 60 + dt.getMinutes();
-  const departDiff = toMin(c.depart) - startMin;
+  const departDiff = (c.departMin ?? toMin(c.depart)) - startMin;
   const boardDiff = isFromHome ? Math.max(0, departDiff - c.walk) : Math.max(0, departDiff);
 
   // 家に着く時刻（バス停到着時刻 + 家までの徒歩時間）
-  const homeArrive = toTime(toMin(c.arrive) + c.walk);
+  const homeArrive = toTime((c.arriveMin ?? toMin(c.arrive)) + c.walk);
 
   const vars = {
     line:        c.line,
@@ -654,6 +742,8 @@ function buildCandidateFromRoute(route, schedule, isFromHome) {
     getoff:    route.getoff,
     depart:    schedule.depart_time,
     arrive:    toTime(arriveMin),
+    departMin,
+    arriveMin,
     walk:      walkMin,
     ride:      rideMin,
     finishMin,
@@ -661,29 +751,27 @@ function buildCandidateFromRoute(route, schedule, isFromHome) {
 }
 
 function buildAllCandidates(mode, dayType, startMin) {
-  console.log("=== buildAllCandidates START ===");
-  console.log("mode:", mode, "dayType:", dayType, "startMin:", startMin);
-
   const isFromHome = mode.startsWith("自宅→");
-
-  return routes
-    .filter(r => r.mode === mode)
-    .flatMap(r => {
-      console.log("---- checking route:", r);
+  const modeRoutes = routes.filter(r => r.mode === mode);
+  const candidates = modeRoutes.flatMap(r => {
       const departAfter = getDepartureThreshold(r, startMin, isFromHome);
-      console.log("departAfter:", departAfter);
-
-      return schedules
-        .filter(s =>
+      const matches = schedules.filter(s =>
           s.route === r.line && s.stop === r.stop &&
           s.direction === r.direction && s.day_type === dayType &&
           toMin(s.depart_time) >= departAfter
-        )
-        .map(s => buildCandidateFromRoute(r, s, isFromHome));
-    })
-    .sort((a, b) =>
-      a.finishMin - b.finishMin || toMin(a.depart) - toMin(b.depart)
-    );
+        );
+      addRouteDecisionLog(`${r.line}: ${matches.length}件の時刻表候補`, {
+        stop: r.stop,
+        direction: r.direction,
+        dayType,
+        departAfter,
+        departures: matches.map(s => s.depart_time),
+      });
+      return matches.map(s => buildCandidateFromRoute(r, s, isFromHome));
+    });
+  const sorted = candidates.sort((a, b) => a.finishMin - b.finishMin || a.departMin - b.departMin);
+  addRouteDecisionLog("CSV候補の生成完了", { routeCount: modeRoutes.length, candidateCount: sorted.length });
+  return sorted;
 }
 
 // ---- 系統グループ別の最速1件 ----
@@ -697,7 +785,7 @@ function buildGroupBestFromAll(allCandidates, baseMin, isFromHome) {
     .filter(c => {
       // 家→駅の場合はバス停までの徒歩時間を考慮し、実際に乗車可能な便だけを対象にする
       const departThreshold = isFromHome ? baseMin + c.walk : baseMin;
-      if (toMin(c.depart) < departThreshold) return false;
+      if ((c.departMin ?? toMin(c.depart)) < departThreshold) return false;
 
       // 深夜便は「メイン便が23:00以降のときだけ」表示
       if (c.line === "深夜" && !showMidnight) return false;
@@ -711,6 +799,9 @@ function buildGroupBestFromAll(allCandidates, baseMin, isFromHome) {
       }
     });
 
+  addRouteDecisionLog("系統別候補を決定", Object.fromEntries(Object.entries(best).map(([group, c]) => [group, {
+    line: c.line, depart: c.depart, arrive: c.arrive, finishMin: c.finishMin,
+  }])));
   return best;
 }
 
@@ -724,7 +815,7 @@ function routeCardHTML(c, isFromHome) {
          + `<b>${c.stop}</b> ： ${c.depart} 発（${c.line}）<br>↓ 乗車 ${c.ride}分<br>`
          + `<b>${c.getoff}</b> ： ${c.arrive} 着`;
   } else {
-    const homeArrive = toTime(toMin(c.arrive) + c.walk);
+    const homeArrive = toTime((c.arriveMin ?? toMin(c.arrive)) + c.walk);
     return `<b>${c.stop}</b> ： ${c.depart} 発（${c.line}）<br>↓ 乗車 ${c.ride}分<br>`
          + `<b>${c.getoff}</b> ： ${c.arrive} 着<br>↓ 徒歩 ${c.walk}分<br>`
          + `<b>自宅</b> ： ${homeArrive}`;
@@ -743,7 +834,7 @@ function groupCardBody(c, isFromHome) {
         <span>🏁 降車：<b>${c.getoff}</b> <b>${c.arrive}</b>着</span>
       </div>`;
   } else {
-    const homeArrive = toTime(toMin(c.arrive) + c.walk);
+    const homeArrive = toTime((c.arriveMin ?? toMin(c.arrive)) + c.walk);
     return `<div class="group-line-name">${c.line}</div>
       <div class="group-detail">
         <span>🚏 乗車：<b>${c.stop}</b> <b>${c.depart}</b>発</span>
@@ -756,6 +847,16 @@ function groupCardBody(c, isFromHome) {
 // ---- 全体描画 ----
 
 async function renderAll(focusCandidate, isFromHome, label) {
+  addRouteDecisionLog("表示便を決定", {
+    reason: label,
+    index: _allIndex + 1,
+    total: _allCandidates.length,
+    line: focusCandidate.line,
+    stop: focusCandidate.stop,
+    depart: focusCandidate.depart,
+    arrive: focusCandidate.arrive,
+    finishMin: focusCandidate.finishMin,
+  });
   // ルートカード
   const routeCard = document.getElementById("routeCard");
   routeCard.style.display = "block";
@@ -769,14 +870,14 @@ async function renderAll(focusCandidate, isFromHome, label) {
   document.getElementById("nextBtn").disabled = (_allIndex >= _allCandidates.length - 1);
 
   // 系統グループカード：フォーカス便の出発時刻を基準に最速を再計算
-  const focusMin  = toMin(focusCandidate.depart);
+  const focusMin  = focusCandidate.departMin ?? toMin(focusCandidate.depart);
   // const groupBest = buildGroupBest(_lastMode, _lastDayType, focusMin);
   // 初回表示は startMin を使う
   let baseMin;
   if (label === "first") {
     baseMin = _initialStartMin;
   } else {
-    baseMin = toMin(focusCandidate.depart);
+    baseMin = focusCandidate.departMin ?? toMin(focusCandidate.depart);
   }
 
   const groupBest = buildGroupBestFromAll(_allCandidates, baseMin, isFromHome);
@@ -798,10 +899,12 @@ async function renderAll(focusCandidate, isFromHome, label) {
 // ---- 検索メイン ----
 
 async function searchBus() {
-  console.log("=== searchBus START ===");
+  _routeDecisionLogs = [];
+  addRouteDecisionLog("検索開始");
 
   const datetime = document.getElementById("datetime").value;
   if (!datetime) {
+    addRouteDecisionLog("検索中止: 出発日時が未入力");
     setBubbleSpeech("日時を入力してね。");
     return;
   }
@@ -809,15 +912,11 @@ async function searchBus() {
   const dt         = new Date(datetime);
   const startMin   = dt.getHours() * 60 + dt.getMinutes();
   const mode       = document.querySelector("#modeButtons .active").dataset.mode;
-  const dayType    = getDayType(dt);
+  const calendarDayType = getDayType(dt);
+  const dayType    = _selectedDayType || calendarDayType;
   const isFromHome = mode.startsWith("自宅→");
 
-  console.log("datetime:", datetime);
-  console.log("dt:", dt);
-  console.log("startMin:", startMin);
-  console.log("mode:", mode);
-  console.log("dayType:", dayType);
-  console.log("isFromHome:", isFromHome);
+  addRouteDecisionLog("検索条件", { datetime, calendarDayType, selectedDayType: dayType, mode, dayType, startMin, isFromHome });
 
   _lastMode       = mode;
   _lastDayType    = dayType;
@@ -825,7 +924,16 @@ async function searchBus() {
   _initialStartMin = startMin;
 
   const csvCandidates = buildAllCandidates(mode, dayType, startMin);
-  const apiCandidates = await loadCandidatesFromTransitAPI(mode, dt, startMin, isFromHome);
+  const isDayTypeOverride = dayType !== calendarDayType;
+  let apiCandidates = [];
+  if (isDayTypeOverride) {
+    addRouteDecisionLog("曜日ダイヤを手動指定したためTransit APIを使わず、選択したCSVダイヤを使用");
+  } else {
+    const loadingMessage = await getTransferMsg("loading");
+    setBubbleSpeech(loadingMessage.text);
+    setCharacterExpression(loadingMessage.expression);
+    apiCandidates = await loadCandidatesFromTransitAPI(mode, dt, startMin, isFromHome);
+  }
 
   if (apiCandidates.length > 0) {
     _allCandidates = apiCandidates;
@@ -834,16 +942,24 @@ async function searchBus() {
     _allCandidates = csvCandidates;
     _lastDataSource = "CSV（フォールバック）";
   }
+  addRouteDecisionLog("候補データの選択", {
+    source: _lastDataSource,
+    apiCandidateCount: apiCandidates.length,
+    csvCandidateCount: csvCandidates.length,
+  });
 
   document.getElementById("dayTypeDisplay").innerText =
     `この日は「${dayType}」ダイヤです（データ: ${_lastDataSource}）`;
 
   _allIndex      = 0;
 
-  console.log("allCandidates:", _allCandidates);
-  console.log("count:", _allCandidates.length);
+  addRouteDecisionLog("到着順に並べた候補", _allCandidates.map((c, index) => ({
+    index: index + 1, line: c.line, stop: c.stop, depart: c.depart, arrive: c.arrive,
+    finishMin: c.finishMin,
+  })));
 
   if (_allCandidates.length === 0) {
+    addRouteDecisionLog("該当する便なし", { source: _lastDataSource, mode, dayType, startMin });
     document.getElementById("routeCard").style.display = "none";
     document.getElementById("groupCards").innerHTML    = "";
     document.getElementById("prevBtn").disabled = true;
@@ -863,12 +979,14 @@ async function searchBus() {
 async function showPrevBus() {
   if (_allIndex <= 0) return;
   _allIndex--;
+  addRouteDecisionLog("前の便を表示", { index: _allIndex + 1, candidate: _allCandidates[_allIndex] });
   await renderAll(_allCandidates[_allIndex], _lastIsFromHome, "prev");
 }
 
 async function showNextBus() {
   if (_allIndex >= _allCandidates.length - 1) return;
   _allIndex++;
+  addRouteDecisionLog("次の便を表示", { index: _allIndex + 1, candidate: _allCandidates[_allIndex] });
   await renderAll(_allCandidates[_allIndex], _lastIsFromHome, "next");
 }
 
@@ -877,7 +995,16 @@ async function showNextBus() {
 window.addEventListener("load", async () => {
   setBubbleSpeech("行き先と日時を選んで検索してね！");
   await Promise.all([loadCSV(), loadHolidays()]);
-  document.getElementById("datetime").value = fmtDTL(new Date());
+  const datetimeInput = document.getElementById("datetime");
+  datetimeInput.value = fmtDTL(new Date());
+  datetimeInput.addEventListener("input", updateDepartureDateTimeDisplay);
+  datetimeInput.addEventListener("input", refreshDayTypeFromDate);
+  datetimeInput.addEventListener("change", () => {
+    updateDepartureDateTimeDisplay();
+    refreshDayTypeFromDate();
+  });
+  updateDepartureDateTimeDisplay();
+  refreshDayTypeFromDate();
 
   document.querySelectorAll("#modeButtons button").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -885,10 +1012,15 @@ window.addEventListener("load", async () => {
       btn.classList.add("active");
     });
   });
+  document.querySelectorAll("#timetableDayButtons button").forEach(button => {
+    button.addEventListener("click", () => setSelectedDayType(button.dataset.dayType));
+  });
   document.getElementById("nowButton").addEventListener("click", () => {
-    document.getElementById("datetime").value = fmtDTL(new Date());
+    datetimeInput.value = fmtDTL(new Date());
+    updateDepartureDateTimeDisplay();
   });
   document.getElementById("searchBtn").addEventListener("click", searchBus);
   document.getElementById("prevBtn").addEventListener("click", showPrevBus);
   document.getElementById("nextBtn").addEventListener("click", showNextBus);
+  document.getElementById("routeDecisionLogButton").addEventListener("click", toggleRouteDecisionLogs);
 });
