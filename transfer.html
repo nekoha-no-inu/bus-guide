@@ -71,40 +71,50 @@
     font: 12px/1.5 Consolas, monospace;
   }
   .departure-datetime-control {
-    position: relative;
-    display: block;
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
     width: 100%;
-    min-height: 42px;
     margin: 5px 0;
   }
-  #datetimeDisplay {
-    display: flex;
-    align-items: center;
+  #datetimeManual {
+    flex: 1;
+    min-width: 0;
     box-sizing: border-box;
-    width: 100%;
-    min-height: 42px;
+    height: 42px;
+    margin: 0;
     padding: 10px;
     border: 1px solid var(--border-color, #333);
     border-radius: 8px;
     background: #fff;
     color: #222;
     font-size: 16px;
-    pointer-events: none;
   }
-  #datetime {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    box-sizing: border-box;
-    width: 100%;
-    height: 100%;
+  #datetimePickerBtn {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 96px;
     margin: 0;
-    opacity: 0;
+    padding: 8px 10px;
+    border: 1px solid #4a90e2;
+    border-radius: 8px;
+    background: #fff;
+    color: #357ac8;
+    font-size: 14px;
     cursor: pointer;
   }
-  .departure-datetime-control:focus-within #datetimeDisplay {
+  .departure-datetime-control:focus-within #datetimeManual {
     outline: 2px solid #4caf50;
     outline-offset: 1px;
+  }
+  #datetimePicker {
+    position: fixed;
+    left: -10000px;
+    top: 0;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
   }
   #timetableDayButtons {
     display: flex;
@@ -152,8 +162,9 @@
 <div id="controls">
   <label>出発日時：
     <span class="departure-datetime-control">
-      <input type="datetime-local" id="datetime" aria-label="出発日時">
-      <span id="datetimeDisplay" aria-hidden="true">日時を選択</span>
+      <input type="text" id="datetimeManual" aria-label="出発日時" inputmode="text" autocomplete="off" placeholder="yyyy/mm/dd HH:mm" maxlength="16">
+      <button type="button" id="datetimePickerBtn" aria-label="カレンダーから日時を選択">日時を選択</button>
+      <input type="datetime-local" id="datetime" tabindex="-1" aria-hidden="true">
     </span>
   </label>
   <button id="nowButton">現在時刻に更新</button>
@@ -186,6 +197,6 @@
 </section>
 
 <script src="js/common.js"></script>
-<script src="js/transfer.js?v=b551459"></script>
+<script src="js/transfer.js?v=d797ae1"></script>
 </body>
 </html>

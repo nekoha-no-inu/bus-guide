@@ -171,10 +171,33 @@ function formatDepartureDateTime(value) {
   const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
   return match ? `${match[1]}/${match[2]}/${match[3]} ${match[4]}:${match[5]}` : "日時を選択";
 }
-function updateDepartureDateTimeDisplay() {
+function parseDepartureDateTime(value) {
+  const match = String(value || "").trim().match(/^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})$/);
+  if (!match) return null;
+  const [, year, month, day, hour, minute] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
+  if (date.getFullYear() !== Number(year) || date.getMonth() !== Number(month) - 1 ||
+      date.getDate() !== Number(day) || date.getHours() !== Number(hour) || date.getMinutes() !== Number(minute)) {
+    return null;
+  }
+  return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+function setDepartureDateTime(value) {
   const input = document.getElementById("datetime");
-  const display = document.getElementById("datetimeDisplay");
-  if (input && display) display.textContent = formatDepartureDateTime(input.value);
+  const manual = document.getElementById("datetimeManual");
+  if (!input || !manual) return;
+  input.value = value;
+  manual.value = formatDepartureDateTime(value);
+}
+function syncDepartureDateTimeFromManual() {
+  const manual = document.getElementById("datetimeManual");
+  const input = document.getElementById("datetime");
+  if (!manual || !input) return false;
+  const parsed = parseDepartureDateTime(manual.value);
+  manual.setCustomValidity(parsed ? "" : "日時を yyyy/mm/dd HH:mm の形式で入力してください。");
+  if (!parsed) return false;
+  input.value = parsed;
+  return true;
 }
 function grp(line) { return line.replace(/-\d+$/, ""); }
 
@@ -902,12 +925,13 @@ async function searchBus() {
   _routeDecisionLogs = [];
   addRouteDecisionLog("検索開始");
 
-  const datetime = document.getElementById("datetime").value;
-  if (!datetime) {
+  if (!syncDepartureDateTimeFromManual()) {
     addRouteDecisionLog("検索中止: 出発日時が未入力");
-    setBubbleSpeech("日時を入力してね。");
+    document.getElementById("datetimeManual").reportValidity();
+    setBubbleSpeech("出発日時を yyyy/mm/dd HH:mm の形式で入力してね。");
     return;
   }
+  const datetime = document.getElementById("datetime").value;
 
   const dt         = new Date(datetime);
   const startMin   = dt.getHours() * 60 + dt.getMinutes();
@@ -996,14 +1020,21 @@ window.addEventListener("load", async () => {
   setBubbleSpeech("行き先と日時を選んで検索してね！");
   await Promise.all([loadCSV(), loadHolidays()]);
   const datetimeInput = document.getElementById("datetime");
-  datetimeInput.value = fmtDTL(new Date());
-  datetimeInput.addEventListener("input", updateDepartureDateTimeDisplay);
-  datetimeInput.addEventListener("input", refreshDayTypeFromDate);
-  datetimeInput.addEventListener("change", () => {
-    updateDepartureDateTimeDisplay();
+  const datetimePicker = datetimeInput;
+  const datetimeManual = document.getElementById("datetimeManual");
+  const initialValue = fmtDTL(new Date());
+  setDepartureDateTime(initialValue);
+  datetimeManual.addEventListener("input", () => {
+    if (syncDepartureDateTimeFromManual()) refreshDayTypeFromDate();
+  });
+  datetimeManual.addEventListener("change", () => {
+    if (!syncDepartureDateTimeFromManual()) datetimeManual.reportValidity();
+    else refreshDayTypeFromDate();
+  });
+  datetimePicker.addEventListener("change", () => {
+    setDepartureDateTime(datetimePicker.value);
     refreshDayTypeFromDate();
   });
-  updateDepartureDateTimeDisplay();
   refreshDayTypeFromDate();
 
   document.querySelectorAll("#modeButtons button").forEach(btn => {
@@ -1016,8 +1047,11 @@ window.addEventListener("load", async () => {
     button.addEventListener("click", () => setSelectedDayType(button.dataset.dayType));
   });
   document.getElementById("nowButton").addEventListener("click", () => {
-    datetimeInput.value = fmtDTL(new Date());
-    updateDepartureDateTimeDisplay();
+    setDepartureDateTime(fmtDTL(new Date()));
+  });
+  document.getElementById("datetimePickerBtn").addEventListener("click", () => {
+    if (typeof datetimePicker.showPicker === "function") datetimePicker.showPicker();
+    else datetimePicker.click();
   });
   document.getElementById("searchBtn").addEventListener("click", searchBus);
   document.getElementById("prevBtn").addEventListener("click", showPrevBus);
