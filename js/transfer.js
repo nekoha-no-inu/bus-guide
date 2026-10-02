@@ -5,7 +5,7 @@
 const HOLIDAY_API =
   "https://www.googleapis.com/calendar/v3/calendars/japanese__ja@holiday.calendar.google.com/events?key=AIzaSyCCQB3KoCaFIvG1Wf8xy7y03d1ACHjqpsU";
 const TRANSIT_API_BASE = "https://api.transit.ls8h.com";
-const TRANSIT_API_TIMEOUT_MS = 4500;
+const TRANSIT_API_TIMEOUT_MS = 25000;
 const STOP_NAME_ALIAS = {
   "台田団地中央": "下戸",
 };
@@ -421,6 +421,7 @@ function toApiCandidates(payload, mode, dt, startMin, isFromHome) {
   const built = journeys.map(journey => {
     const legs = pickFirstArray(journey?.legs, journey?.sections, journey?.segments, journey?.trips);
     const transitLegs = legs.filter(isTransitLeg);
+    if (transitLegs.length === 0) return null; // 徒歩のみの経路は対象外
     const firstLeg = transitLegs[0] || null;
     const lastLeg = transitLegs[transitLegs.length - 1] || firstLeg;
 
@@ -632,8 +633,7 @@ async function loadCandidatesFromTransitAPI(mode, dt, startMin, isFromHome) {
     const stationEndpoint = await resolvePlaceEndpointByName(stationName);
     const stopEndpoints = await Promise.all(homeStops.map(name => resolvePlaceEndpointByName(name)));
 
-    const allCandidates = [];
-    for (let i = 0; i < homeStops.length; i++) {
+    const fetchOne = async i => {
       const stopName = homeStops[i];
       const stopEndpoint = stopEndpoints[i];
       const fromEndpoint = isFromHome ? stopEndpoint : stationEndpoint;
@@ -661,10 +661,19 @@ async function loadCandidatesFromTransitAPI(mode, dt, startMin, isFromHome) {
       }
 
       const payload = await res.json();
-      const candidates = toApiCandidates(payload, mode, dt, startMin, isFromHome)
+      return toApiCandidates(payload, mode, dt, startMin, isFromHome)
         .map(c => ({ ...c, stop: normalizeStopNameForLine(c.stop, c.line), getoff: normalizeStopNameForLine(c.getoff, c.line) }));
-      allCandidates.push(...candidates);
+    };
+
+    const settled = await Promise.allSettled(homeStops.map((_, i) => fetchOne(i)));
+    const failures = settled.filter(s => s.status === "rejected");
+    if (failures.length > 0) {
+      addRouteDecisionLog("Transit APIの一部リクエストが失敗", { failed: failures.length, total: settled.length, errors: failures.map(f => String(f.reason)) });
     }
+    if (failures.length === settled.length) {
+      throw failures[0].reason;
+    }
+    const allCandidates = settled.flatMap(s => (s.status === "fulfilled" ? s.value : []));
 
     const deduped = uniqueBy(
       allCandidates,
