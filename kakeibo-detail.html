@@ -189,18 +189,11 @@
       <section class="fixed-cost-section" aria-labelledby="fixedCostTitle">
         <h4 id="fixedCostTitle">固定費リスト</h4>
         <div id="fixedCostList" class="fixed-cost-list"></div>
-        <label for="fixedCostSelect">転記する固定費</label>
-        <select id="fixedCostSelect"></select>
-        <button id="fixedCostTransferBtn" class="fixed-cost-register" type="button">固定費を追加</button>
+        <button id="fixedCostTransferBtn" class="fixed-cost-register" type="button">未入力の固定費をまとめて追加</button>
         <label for="fixedCostDescription">リストに登録する内容</label>
         <input type="text" id="fixedCostDescription" placeholder="例：家賃">
         <label for="fixedCostSubcategory">小項目</label>
-        <select id="fixedCostSubcategory">
-          <option value="住居費">住居費</option>
-          <option value="水道光熱費">水道光熱費</option>
-          <option value="通信費">通信費</option>
-          <option value="保険料">保険料</option>
-        </select>
+        <select id="fixedCostSubcategory"></select>
         <label for="fixedCostDay">日付（日のみ）</label>
         <input type="number" id="fixedCostDay" min="1" max="31" step="1" inputmode="numeric" placeholder="例：27">
         <label for="fixedCostAmount">金額（円）</label>

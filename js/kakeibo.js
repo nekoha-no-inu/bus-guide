@@ -595,15 +595,13 @@ async function getEnteredFixedCostDescriptions() {
 
 async function renderFixedCostTemplates() {
   const list = document.getElementById("fixedCostList");
-  const select = document.getElementById("fixedCostSelect");
-  if (!list || !select) return;
+  if (!list) return;
 
   const seq = ++fixedCostRenderSeq;
   const templates = getFixedCostTemplates();
   const entered = await getEnteredFixedCostDescriptions();
   if (seq !== fixedCostRenderSeq) return;
 
-  select.replaceChildren(new Option("固定費を選択", ""));
   list.replaceChildren();
 
   if (templates.length === 0) {
@@ -624,9 +622,6 @@ async function renderFixedCostTemplates() {
 
   templates.forEach((template, index) => {
     const isEntered = entered.has(String(template.description).trim());
-    if (!isEntered) {
-      select.add(new Option(`${template.description}（${template.day || "?"}日・${Number(template.amount).toLocaleString()}円）`, String(index)));
-    }
     const row = document.createElement("div");
     row.className = "fixed-cost-item";
     const label = document.createElement("span");
@@ -665,30 +660,43 @@ function saveFixedCostTemplate() {
   renderFixedCostTemplates();
 }
 
-function transferSelectedFixedCost() {
-  const selectedIndex = document.getElementById("fixedCostSelect").value;
-  const template = getFixedCostTemplates()[Number(selectedIndex)];
-  if (!template) {
-    setBubbleSpeech("転記する固定費を選んでね。");
+async function transferSelectedFixedCost() {
+  const month = document.getElementById("f-month").value;
+  if (!month) {
+    setBubbleSpeech("対象月を選んでね。");
+    return;
+  }
+  const entered = await getEnteredFixedCostDescriptions();
+  const pending = getFixedCostTemplates().filter(t => !entered.has(String(t.description).trim()));
+  if (pending.length === 0) {
+    setBubbleSpeech("追加する固定費はないよ。");
     return;
   }
 
-  document.getElementById("d-type").value = "支出";
-  onDetailInlineTypeChange();
-  const dateInput = document.getElementById("d-date");
-  const selectedMonth = document.getElementById("f-month").value || (dateInput.value || defaultInputDate()).slice(0, 7);
-  const [year, month] = selectedMonth.split("-").map(Number);
-  const lastDay = new Date(year, month, 0).getDate();
-  const fallbackDay = Number((dateInput.value || defaultInputDate()).slice(-2));
-  const day = Math.min(Number(template.day) || fallbackDay, lastDay);
-  dateInput.value = `${selectedMonth}-${String(day).padStart(2, "0")}`;
-  updateLocalizedDateDisplay(dateInput);
-  document.getElementById("d-category").value = "固定費";
-  document.getElementById("d-subcategory").value = template.subcategory;
-  document.getElementById("d-description").value = template.description;
-  document.getElementById("d-amount").value = template.amount;
-  document.getElementById("d-person").value = template.person;
-  setBubbleSpeech(`${template.description}を入力欄に転記したよ。`);
+  const [year, mon] = month.split("-").map(Number);
+  const lastDay = new Date(year, mon, 0).getDate();
+  const total = pending.reduce((s, t) => s + Number(t.amount || 0), 0);
+  if (!confirm(`${month}の固定費${pending.length}件（合計${total.toLocaleString()}円）をまとめて追加しますか？`)) return;
+
+  try {
+    for (const t of pending) {
+      const day = Math.min(Number(t.day) || 1, lastDay);
+      await addRecord({
+        type: "支出",
+        date: `${month}-${String(day).padStart(2, "0")}`,
+        category: "固定費",
+        subcategory: t.subcategory,
+        description: t.description,
+        amount: Number(t.amount),
+        person: t.person,
+      });
+    }
+    setBubbleSpeech(`固定費${pending.length}件をまとめて追加したよ。`);
+  } catch (e) {
+    setBubbleSpeech("固定費の追加に失敗したよ。");
+    console.error(e);
+  }
+  loadKakeiboDetailList();
 }
 
 function openEdit(firestoreId) {
@@ -811,6 +819,7 @@ function initKakeiboDetailPage() {
   if (inlineSubmitBtn) inlineSubmitBtn.addEventListener("click", submitDetailInlineForm);
   if (fixedCostSaveBtn) fixedCostSaveBtn.addEventListener("click", saveFixedCostTemplate);
   if (fixedCostTransferBtn) fixedCostTransferBtn.addEventListener("click", transferSelectedFixedCost);
+  populateSubcategorySelect(document.getElementById("fixedCostSubcategory"), getAllSubcategories(), false);
   if (inlineClearBtn) {
     inlineClearBtn.addEventListener("click", () => {
       const dDesc = document.getElementById("d-description");
