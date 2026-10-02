@@ -73,8 +73,11 @@
 #filterRow .localized-date-display { min-height:30px; padding:6px; font-size:13px; }
 .localized-date-control > input.localized-native-date { position:absolute; inset:0; z-index:2; width:100%; height:100%; margin:0; padding:0; box-sizing:border-box; opacity:0; cursor:pointer; }
 .localized-date-control:focus-within .localized-date-display { outline:2px solid #4caf50; outline-offset:1px; }
-.inline-input-card .localized-date-control > input.localized-native-date { min-width:0; }
-#modal .localized-date-control > input.localized-native-date { min-width:0; }
+.inline-input-card .localized-date-control > input.localized-native-date,
+#modal .localized-date-control > input.localized-native-date { position:static; opacity:1; height:auto; min-width:0; padding:8px; cursor:text; }
+.inline-input-card .localized-date-display,
+#modal .localized-date-display { display:none; }
+.fixed-cost-total { margin:4px 0; font-weight:bold; font-size:13px; }
 #loading { text-align:center; color:#999; padding:20px; }
 @media (max-width: 980px) {
   .detail-layout.split { grid-template-columns: 1fr; }

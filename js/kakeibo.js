@@ -436,6 +436,7 @@ async function loadKakeiboDetailList() {
   try {
     const records = await fetchAllRecords(filters);
     renderMonthlyExpenseChart(records, filters.yearMonth);
+    renderFixedCostTemplates();
     list.innerHTML = "";
 
     const expense = records.filter(r => r.type === "支出").reduce((s, r) => s + Number(r.amount), 0);
@@ -578,12 +579,30 @@ function saveFixedCostTemplates(templates) {
   localStorage.setItem(KAKEIBO_STORAGE_KEYS.FIXED_COSTS, JSON.stringify(templates));
 }
 
-function renderFixedCostTemplates() {
+let fixedCostRenderSeq = 0;
+
+async function getEnteredFixedCostDescriptions() {
+  const yearMonth = (document.getElementById("f-month") || {}).value;
+  if (!yearMonth) return new Set();
+  try {
+    const records = await fetchAllRecords({ yearMonth, type: null, person: null, category: "固定費", subcategory: null });
+    return new Set(records.filter(r => r.type === "支出").map(r => String(r.description || "").trim()));
+  } catch (error) {
+    console.error(error);
+    return new Set();
+  }
+}
+
+async function renderFixedCostTemplates() {
   const list = document.getElementById("fixedCostList");
   const select = document.getElementById("fixedCostSelect");
   if (!list || !select) return;
 
+  const seq = ++fixedCostRenderSeq;
   const templates = getFixedCostTemplates();
+  const entered = await getEnteredFixedCostDescriptions();
+  if (seq !== fixedCostRenderSeq) return;
+
   select.replaceChildren(new Option("固定費を選択", ""));
   list.replaceChildren();
 
@@ -592,14 +611,26 @@ function renderFixedCostTemplates() {
     empty.className = "fixed-cost-empty";
     empty.textContent = "固定費を登録してください。";
     list.appendChild(empty);
+  } else {
+    const total = templates.reduce((s, t) => s + Number(t.amount || 0), 0);
+    const remaining = templates
+      .filter(t => !entered.has(String(t.description).trim()))
+      .reduce((s, t) => s + Number(t.amount || 0), 0);
+    const totalEl = document.createElement("p");
+    totalEl.className = "fixed-cost-total";
+    totalEl.textContent = `固定費合計：${total.toLocaleString()}円（未入力：${remaining.toLocaleString()}円）`;
+    list.appendChild(totalEl);
   }
 
   templates.forEach((template, index) => {
-    select.add(new Option(`${template.description}（${template.day || "?"}日・${Number(template.amount).toLocaleString()}円）`, String(index)));
+    const isEntered = entered.has(String(template.description).trim());
+    if (!isEntered) {
+      select.add(new Option(`${template.description}（${template.day || "?"}日・${Number(template.amount).toLocaleString()}円）`, String(index)));
+    }
     const row = document.createElement("div");
     row.className = "fixed-cost-item";
     const label = document.createElement("span");
-    label.textContent = `${template.description} / ${template.subcategory} / ${template.day || "?"}日 / ${Number(template.amount).toLocaleString()}円 / ${template.person}`;
+    label.textContent = `${template.description} / ${template.subcategory} / ${template.day || "?"}日 / ${Number(template.amount).toLocaleString()}円 / ${template.person}${isEntered ? " / 入力済" : ""}`;
     const remove = document.createElement("button");
     remove.type = "button";
     remove.textContent = "削除";
@@ -780,7 +811,6 @@ function initKakeiboDetailPage() {
   if (inlineSubmitBtn) inlineSubmitBtn.addEventListener("click", submitDetailInlineForm);
   if (fixedCostSaveBtn) fixedCostSaveBtn.addEventListener("click", saveFixedCostTemplate);
   if (fixedCostTransferBtn) fixedCostTransferBtn.addEventListener("click", transferSelectedFixedCost);
-  renderFixedCostTemplates();
   if (inlineClearBtn) {
     inlineClearBtn.addEventListener("click", () => {
       const dDesc = document.getElementById("d-description");
