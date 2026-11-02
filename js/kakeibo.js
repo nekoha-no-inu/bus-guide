@@ -543,21 +543,14 @@ function formatDateJapanese(date) {
   return match ? `${match[1]}/${match[2]}/${match[3]}` : String(date || "日付を選択");
 }
 
-function formatMonthJapanese(yearMonth) {
-  const match = String(yearMonth || "").match(/^(\d{4})-(\d{2})$/);
-  return match ? `${match[1]}年${Number(match[2])}月` : "月を選択";
-}
-
 function updateLocalizedDateDisplay(input) {
   const display = document.getElementById(`${input.id}-display`);
   if (!display) return;
-  display.textContent = input.type === "month"
-    ? formatMonthJapanese(input.value)
-    : formatDateJapanese(input.value);
+  display.textContent = formatDateJapanese(input.value);
 }
 
 function initLocalizedDateDisplays() {
-  ["f-month", "d-date", "m-date"].forEach(id => {
+  ["d-date", "m-date"].forEach(id => {
     const input = document.getElementById(id);
     if (!input) return;
     input.addEventListener("input", () => updateLocalizedDateDisplay(input));

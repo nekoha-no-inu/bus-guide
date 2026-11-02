@@ -9,7 +9,7 @@
 <style>
 #filterRow { display:flex; gap:8px; margin:8px 0; flex-wrap:wrap; }
 #filterRow select,
-#filterRow input[type="month"] { flex:1; min-width:80px; font-size:13px; padding:6px; }
+#filterRow input[type="month"] { flex:1; min-width:110px; box-sizing:border-box; font-size:13px; padding:6px; border:1px solid #ccc; border-radius:6px; }
 .filter-btn { padding:6px 14px; background:#4caf50; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:13px; white-space:nowrap; width:auto; }
 #inlineInputToggleRow { margin:6px 0 10px; font-size:13px; color:#444; }
 #inlineInputToggleRow label { display:flex; align-items:center; gap:6px; cursor:pointer; }
@@ -69,8 +69,6 @@
 .btn-cancel { background:#999;    color:#fff; }
 .localized-date-control { position:relative; display:block; min-width:0; }
 .localized-date-display { display:flex; align-items:center; box-sizing:border-box; width:100%; min-height:36px; padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff; color:#222; font-size:14px; pointer-events:none; }
-#filterRow .localized-date-control { flex:1; min-width:110px; }
-#filterRow .localized-date-display { min-height:30px; padding:6px; font-size:13px; }
 .localized-date-control > input.localized-native-date { position:absolute; inset:0; z-index:2; width:100%; height:100%; margin:0; padding:0; box-sizing:border-box; opacity:0; cursor:pointer; }
 .localized-date-control:focus-within .localized-date-display { outline:2px solid #4caf50; outline-offset:1px; }
 .inline-input-card .localized-date-control > input.localized-native-date,
@@ -95,10 +93,7 @@
 </div>
 
 <div id="filterRow">
-  <div class="localized-date-control">
-    <input type="month" id="f-month" class="localized-native-date" aria-label="対象月">
-    <span id="f-month-display" class="localized-date-display" aria-hidden="true"></span>
-  </div>
+  <input type="month" id="f-month" aria-label="対象月">
 
   <select id="f-type">
     <option value="">全種別</option>
