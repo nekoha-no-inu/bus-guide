@@ -1,40 +1,77 @@
 // ======================================
 // timer.js  ─  タイマー機能
 // ======================================
-// setCharacterSpeech / playAlarmSound は common.js / alarm.js で定義済み
-// ※ timer.html では alarm.js も読み込む（playAlarmSound を共用）
+// setCharacterSpeech は common.js、playAlarmSound は alarm.js で定義済み
 
 let _timerInterval = null;
+let _timerEnd = 0;
+let _timerStarted = 0;
+let _timerLastSpokenMinute = 0;
+let _timerSpeechVersion = 0;
 
-document.getElementById("startTimerBtn").addEventListener("click", async () => {
-  const minutes = parseInt(document.getElementById("timerMinutes").value, 10);
+const timerMinutes = document.getElementById("timerMinutes");
+const timerDisplay = document.getElementById("timerDisplay");
 
-  if (!minutes || minutes <= 0) {
-    const msg = await getMessage("timer", "error");
-    setCharacterSpeech(msg.text, msg.expression);
+async function speakTimerMessage(key, vars, fallback) {
+  const version = ++_timerSpeechVersion;
+  try {
+    const message = await getMessage("timer", key, null, vars);
+    if (version !== _timerSpeechVersion) return;
+    setCharacterSpeech(message.text || fallback, message.expression || "normal");
+  } catch (error) {
+    console.error("タイマーのメッセージを取得できませんでした。", error);
+    if (version === _timerSpeechVersion) setCharacterSpeech(fallback, "normal");
+  }
+}
+
+function updateTimer() {
+  if (_timerInterval === null) return;
+
+  const now = Date.now();
+  const remaining = Math.max(0, Math.ceil((_timerEnd - now) / 1000));
+  const m = Math.floor(remaining / 60);
+  const s = remaining % 60;
+  timerDisplay.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+
+  if (remaining === 0) {
+    clearInterval(_timerInterval);
+    _timerInterval = null;
+    playAlarmSound();
+    speakTimerMessage("finish", {}, "時間になったよ。");
+    return;
+  }
+
+  const elapsedMinutes = Math.floor((now - _timerStarted) / 60_000);
+  if (elapsedMinutes > _timerLastSpokenMinute) {
+    _timerLastSpokenMinute = elapsedMinutes;
+    speakTimerMessage("count", { m, s }, `あと ${m} 分 ${s} 秒だよ。`);
+  }
+}
+
+document.getElementById("startTimerBtn").addEventListener("click", () => {
+  const minutes = Number(timerMinutes.value);
+  const duration = minutes * 60_000;
+  if (!Number.isSafeInteger(minutes) || minutes <= 0 ||
+      !Number.isSafeInteger(duration) || !Number.isSafeInteger(Date.now() + duration)) {
+    speakTimerMessage("error", {}, "時間を正しく入力してね。");
     return;
   }
 
   clearInterval(_timerInterval);
+  _timerStarted = Date.now();
+  _timerEnd = _timerStarted + duration;
+  _timerLastSpokenMinute = 0;
+  _timerInterval = setInterval(updateTimer, 1_000);
+  updateTimer();
+  speakTimerMessage("start", { minutes }, `タイマーを${minutes}分で始めるね。`);
+});
 
-  let remaining = minutes * 60;
+document.querySelectorAll("[data-timer-minutes]").forEach(button => {
+  button.addEventListener("click", () => {
+    timerMinutes.value = button.dataset.timerMinutes;
+  });
+});
 
-  const startMsg = await getMessage("timer", "start", null, { minutes });
-  setCharacterSpeech(startMsg.text, startMsg.expression);
-
-  _timerInterval = setInterval(async () => {
-    remaining--;
-
-    const m = Math.floor(remaining / 60);
-    const s = remaining % 60;
-    const countMsg = await getMessage("timer", "count", null, { m, s });
-    setCharacterSpeech(countMsg.text, countMsg.expression);
-
-    if (remaining <= 0) {
-      clearInterval(_timerInterval);
-      const finishMsg = await getMessage("timer", "finish");
-      setCharacterSpeech(finishMsg.text, finishMsg.expression);
-      playAlarmSound();
-    }
-  }, 1_000);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) updateTimer();
 });

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>タイマー & アラーム</title>
+<title>タイマー</title>
 
 <link rel="stylesheet" href="css/style.css">
 <link rel="manifest" href="manifest.json">
@@ -31,7 +31,36 @@
     font-size: 16px;
     border-radius: 8px;
     margin-top: 10px;
+    box-sizing: border-box;
   }
+
+  .timer-display {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ccc;
+    border-radius: 10px;
+    background: #f7f7f7;
+    text-align: center;
+    font-size: 2rem;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .timer-character .bubble {
+    box-sizing: border-box;
+    min-width: 100%;
+    max-width: 100%;
+  }
+
+  .timer-presets {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .timer-presets button { margin: 0; }
 
   button {
     background: #4a90e2;
@@ -47,26 +76,35 @@
 
 <body>
 
-<h2>タイマー & アラーム</h2>
+<h2>タイマー</h2>
 
 <!-- 戻るボタン -->
 <a href="home.html" class="menu-btn">← ホームに戻る</a>
 
 <!-- キャラと吹き出し -->
-<div class="character-area">
-  <div id="bubble" class="bubble">タイマーやアラームを設定できるよ。</div>
+<div class="character-area timer-character">
+  <div id="bubble" class="bubble">タイマーを設定できるよ。</div>
   <img id="character" src="img/character_normal.png" class="character">
+  <div id="timerDisplay" class="timer-display" role="timer" aria-label="タイマー残り時間">00:00</div>
+  <div class="timer-presets" aria-label="タイマーの時間を選択">
+    <button type="button" data-timer-minutes="1">1分</button>
+    <button type="button" data-timer-minutes="2">2分</button>
+    <button type="button" data-timer-minutes="3">3分</button>
+    <button type="button" data-timer-minutes="4">4分</button>
+    <button type="button" data-timer-minutes="5">5分</button>
+    <button type="button" data-timer-minutes="6">6分</button>
+  </div>
 </div>
 
 <!-- タイマー設定 -->
 <div class="box">
   <h3>⏱ タイマー</h3>
-  <input type="number" id="timerMinutes" placeholder="分を入力（例：5）">
+  <input type="number" id="timerMinutes" min="1" step="1" aria-label="タイマーの時間（分）" placeholder="分を入力（例：5）">
   <button id="startTimerBtn">タイマー開始</button>
 </div>
 
 <!-- アラーム設定 -->
-<div class="box">
+<div class="box" hidden>
   <h3>⏰ アラーム</h3>
   <input type="time" id="alarmTime">
   <button id="setAlarmBtn">アラームをセット</button>
@@ -75,7 +113,7 @@
 <!-- 共通スクリプト（吹き出し更新など） -->
 <script src="js/common.js"></script>
 
-<!-- タイマー・アラーム処理（後で実装） -->
+<!-- アラーム画面は非表示。タイマーの終了音に共通処理を使用 -->
 <script src="js/timer.js"></script>
 <script src="js/alarm.js"></script>
 

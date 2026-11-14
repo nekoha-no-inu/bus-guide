@@ -8,8 +8,13 @@
 <link rel="manifest" href="manifest.json">
 <style>
 #summary { background:#fff; border-radius:10px; padding:14px; margin:12px 0; box-shadow:0 1px 4px rgba(0,0,0,.1); }
+.summary-series-grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px; margin-bottom:10px; }
+.summary-series-card { background:#f9fafb; border:1px solid #e8edf2; border-radius:10px; padding:12px; }
+.summary-series-card--special { background:#fff7ed; border-color:#f6c58a; }
+.summary-series-title { font-size:15px; font-weight:bold; margin-bottom:6px; }
 .summary-row { display:flex; justify-content:space-between; padding:5px 0; font-size:15px; border-bottom:1px solid #f0f0f0; }
 .summary-row:last-child { border:none; font-size:17px; }
+.summary-total-row { margin-top:10px; padding-top:10px; border-top:1px solid #e9ecef; }
 .summary-income  { color:#2196F3; font-weight:bold; }
 .summary-expense { color:#e74c3c; font-weight:bold; }
 .summary-balance.plus { color:#4caf50; font-weight:bold; }
@@ -18,13 +23,15 @@
 #monthNav button { flex:1; padding:10px; border-radius:8px; border:2px solid #4caf50; background:#fff; color:#4caf50; font-size:15px; cursor:pointer; width:auto; }
 #monthTitle { flex:2; text-align:center; font-size:17px; font-weight:bold; }
 .summary-header { display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap; margin-bottom:16px; }
-.summary-chart { min-width:160px; max-width:220px; width:100%; background:#fff; padding:14px; border-radius:14px; box-shadow:0 1px 6px rgba(0,0,0,.08); }
+#summaryChart { width:100%; max-width:980px; background:#fff; padding:18px; border-radius:14px; box-shadow:0 1px 6px rgba(0,0,0,.08); margin:0 auto 16px; }
 .summary-chart-placeholder { color:#888; font-size:14px; text-align:center; padding:18px 0; }
-.summary-chart svg { display:block; margin:0 auto; }
-.summary-chart-legend { margin-top:10px; display:grid; gap:6px; font-size:13px; }
+.summary-chart svg { display:block; margin:0 auto; width:100%; height:auto; }
+.summary-chart-legend { margin-top:12px; display:grid; gap:8px; font-size:13px; }
 .summary-chart-legend-item { display:flex; align-items:center; gap:8px; justify-content:space-between; }
 .summary-chart-color { width:12px; height:12px; border-radius:50%; display:inline-block; }
 .summary-chart-percent { color:#666; font-size:13px; margin-left:auto; }
+.summary-chart-section { margin-bottom:18px; }
+.summary-chart-caption { font-size:12px; font-weight:bold; color:#4a5568; margin-bottom:6px; }
 .page-links { display:flex; gap:10px; margin:10px 0; }
 .page-links a { flex:1; display:block; text-align:center; padding:12px; border-radius:8px; background:#4caf50; color:#fff; text-decoration:none; font-size:15px; font-weight:bold; }
 .page-links a:nth-child(2) { background:#2196F3; }
@@ -45,9 +52,6 @@
     <div id="bubble" class="bubble">読み込み中…</div>
     <img id="character" src="img/character_normal.png" class="character">
   </div>
-  <div id="summaryChart" class="summary-chart">
-    <div class="summary-chart-placeholder">円グラフを生成中...</div>
-  </div>
 </div>
 
 <div id="monthNav">
@@ -57,6 +61,8 @@
 </div>
 
 <div id="summary"><div id="loading">読み込み中…</div></div>
+
+<div id="summaryChart" class="summary-chart"></div>
 
 <div class="page-links">
   <a href="kakeibo-input.html">＋ 入力</a>

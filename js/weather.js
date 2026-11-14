@@ -8,14 +8,6 @@ const CITIES = {
   fukuoka: { name: "福岡市",  lat: 33.590, lon: 130.401 }
 };
 
-const WEATHER_LABELS = {
-  sunny:   "晴れ",
-  cloudy:  "曇り",
-  rain:    "雨",
-  snow:    "雪",
-  thunder: "雷雨"
-};
-
 let currentCity = "kiyose";
 
 // ---- 都市切替 ----

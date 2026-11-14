@@ -32,7 +32,7 @@ function initCharacterImage() {
 function setCharacterExpression(type) {
   const img = document.getElementById("character");
   if (!img) return;
-  const VALID = ["normal", "hurry", "relax"];
+  const VALID = ["normal", "hurry", "relax", "sad", "surprised", "angry", "blush", "sleepy", "happy"];
   img.src = `img/character_${VALID.includes(type) ? type : "normal"}.png`;
 }
 
@@ -141,8 +141,30 @@ let _conversationCache = null;
 
 async function _loadConversation() {
   if (!_conversationCache) {
-    const res = await fetch("data/conversation.json");
-    _conversationCache = await res.json();
+    try {
+      const res = await fetch("data/conversation.json");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      _conversationCache = await res.json();
+    } catch (error) {
+      console.warn("conversation.json の読み込みに失敗したため、簡易メッセージを使います。", error);
+      _conversationCache = {
+        kakeibo: {
+          input_expense: [{ text: "支出を入力してね。家計の見直し、がんばろう。", expression: "normal" }],
+          input_income: [{ text: "収入を入力してね。今月の収支を確認しよう。", expression: "normal" }],
+          empty_input: [{ text: "内容と金額を入力してね。", expression: "hurry" }],
+          saved: [{ text: "保存したよ。続けて確認してね。", expression: "relax" }],
+          detail_show: [{ text: "明細を確認してね。", expression: "normal" }],
+          no_data: [{ text: "まだデータがないよ。入力してみよう。", expression: "relax" }],
+          balance_plus: [{ text: "今月は順調だね。良いペースだよ。", expression: "relax" }],
+          balance_minus: [{ text: "今月は少し厳しいね。こまめに見直そう。", expression: "hurry" }],
+          balance_neutral: [{ text: "今月の状況を確認したよ。", expression: "normal" }],
+          edit_saved: [{ text: "修正したよ。", expression: "normal" }],
+          edit_deleted: [{ text: "削除したよ。", expression: "relax" }],
+          edit_error: [{ text: "修正に失敗したよ。もう一度試してね。", expression: "hurry" }],
+          save_error: [{ text: "保存に失敗したよ。もう一度試してね。", expression: "hurry" }],
+        }
+      };
+    }
   }
   return _conversationCache;
 }
@@ -207,6 +229,14 @@ function randomMessage(list) {
 }
 
 // ---- 天気コード変換 ----
+
+const WEATHER_LABELS = {
+  sunny: "晴れ",
+  cloudy: "曇り",
+  rain: "雨",
+  snow: "雪",
+  thunder: "雷雨"
+};
 
 /**
  * Open-Meteo の weathercode を内部キーに変換する。

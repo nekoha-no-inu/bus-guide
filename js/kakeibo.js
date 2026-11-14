@@ -48,6 +48,7 @@ async function fetchAllRecords(filters = {}) {
   if (filters.person)      records = records.filter(r => r.person === filters.person);
   if (filters.category)    records = records.filter(r => r.category === filters.category);
   if (filters.subcategory) records = records.filter(r => r.subcategory === filters.subcategory);
+  if (filters.series)      records = records.filter(r => getRecordSeries(r) === filters.series);
 
   return records;
 }
@@ -93,11 +94,26 @@ const SUBCATEGORY_MAP = {
   "臨時出費": ["特別費","雑費"],
   "旅費": ["交通費","宿泊費","食費","雑費"],
   "給与": [],
+  "ボーナス": [],
   "臨時収入": []
 };
 
+const SPECIAL_EXPENSE_CATEGORIES = ["旅費", "臨時出費"];
+const SPECIAL_INCOME_CATEGORIES = ["ボーナス"];
 const EXPENSE_CATEGORIES = ["固定費", "変動費", "臨時出費", "旅費"];
-const INCOME_CATEGORIES = ["給与", "臨時収入"];
+const INCOME_CATEGORIES = ["給与", "ボーナス", "臨時収入"];
+
+function getSeriesByCategory(type, category) {
+  if (type === "支出" && SPECIAL_EXPENSE_CATEGORIES.includes(category)) return "特別費";
+  if (type === "収入" && SPECIAL_INCOME_CATEGORIES.includes(category)) return "特別費";
+  return "通常費";
+}
+
+function getRecordSeries(record) {
+  if (!record) return "通常費";
+  if (record.series) return record.series;
+  return getSeriesByCategory(record.type, record.category);
+}
 
 function getAllSubcategories() {
   return [...new Set(Object.values(SUBCATEGORY_MAP).flat())];
@@ -175,6 +191,7 @@ async function submitKakeiboForm() {
   const desc   = document.getElementById("f-description").value.trim();
   const amount = parseInt(document.getElementById("f-amount").value, 10);
   const person = document.getElementById("f-person").value;
+  const series = getSeriesByCategory(type, cat);
 
   if (!date || !desc || !amount || isNaN(amount)) {
     getMessage("kakeibo", "empty_input").then(m => {
@@ -185,7 +202,7 @@ async function submitKakeiboForm() {
   }
 
   try {
-    await addRecord({ type, date, category: cat, subcategory: subcat, description: desc, amount, person });
+    await addRecord({ type, date, series, category: cat, subcategory: subcat, description: desc, amount, person });
     saveInputDate(date);
     getMessage("kakeibo", "saved", null, {
       description: desc,
@@ -230,7 +247,7 @@ function initKakeiboInputPage() {
 
 // ---- kakeibo summary page ----
 
-let currentYM = localStorage.getItem(KAKEIBO_STORAGE_KEYS.SELECTED_MONTH) || thisMonth();
+let currentYM = thisMonth();
 
 function ymLabel(ym) {
   const [y, m] = ym.split("-");
@@ -245,66 +262,169 @@ function getChartColor(index) {
   return palette[index % palette.length];
 }
 
-function renderSubcategoryChart(bySubcat) {
+function formatAxisAmount(value) {
+  return `${Math.round(value).toLocaleString()}円`;
+}
+
+function getSpecialBalanceThroughMonth(records, yearMonth) {
+  return records.reduce((balance, record) => {
+    if (getRecordSeries(record) !== "特別費" || typeof record.date !== "string" ||
+        record.date.slice(0, 7) > yearMonth) return balance;
+    const amount = Number(record.amount) || 0;
+    if (record.type === "収入") return balance + amount;
+    if (record.type === "支出") return balance - amount;
+    return balance;
+  }, 0);
+}
+
+function createNormalExpensePieChart(records, label) {
+  const totals = {};
+  records.filter(r => r.type === "支出").forEach(r => {
+    const key = (r.subcategory && r.subcategory.trim()) || (r.category && r.category.trim()) || "未分類";
+    totals[key] = (totals[key] || 0) + Number(r.amount || 0);
+  });
+
+  const entries = Object.entries(totals).filter(([, value]) => value > 0).sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) {
+    return `<div class="summary-chart-section"><div class="summary-chart-caption">${label}</div><div class="summary-chart-placeholder">データなし</div></div>`;
+  }
+
+  const total = entries.reduce((sum, [, value]) => sum + value, 0);
+  const cx = 120;
+  const cy = 110;
+  const radius = 78;
+  const outerRadius = 104;
+  let startAngle = -Math.PI / 2;
+
+  const segments = entries.map(([category, value], index) => {
+    const sliceAngle = (value / total) * (Math.PI * 2);
+    const endAngle = startAngle + sliceAngle;
+    const x1 = cx + radius * Math.cos(startAngle);
+    const y1 = cy + radius * Math.sin(startAngle);
+    const x2 = cx + radius * Math.cos(endAngle);
+    const y2 = cy + radius * Math.sin(endAngle);
+    const largeArc = sliceAngle > Math.PI ? 1 : 0;
+    const color = getChartColor(index);
+    const segment = `
+      <path d="M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z" fill="${color}" stroke="#fff" stroke-width="2"></path>
+    `;
+    startAngle = endAngle;
+    return { category, value, color, segment };
+  });
+
+  const legend = entries.map(([category, value], index) => {
+    const color = getChartColor(index);
+    const ratio = (value / total * 100);
+    return `
+      <div class="summary-chart-legend-item">
+        <span><span class="summary-chart-color" style="background:${color}"></span> ${category}</span>
+        <span class="summary-chart-percent">${ratio.toFixed(1)}%</span>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="summary-chart-section">
+      <div class="summary-chart-caption">${label}</div>
+      <svg viewBox="0 0 260 220" width="100%" height="220" aria-label="${label}の円グラフ">
+        ${segments.map(s => s.segment).join("")}
+        <circle cx="${cx}" cy="${cy}" r="34" fill="#ffffff"></circle>
+        <text x="${cx}" y="${cy - 2}" text-anchor="middle" font-size="7" fill="#666">支出合計</text>
+        <text x="${cx}" y="${cy + 13}" text-anchor="middle" font-size="10.5" fill="#333" font-weight="bold">${Math.round(total).toLocaleString()}円</text>
+      </svg>
+      <div class="summary-chart-legend">${legend}</div>
+    </div>
+  `;
+}
+
+function createSpecialMonthlyLineChart(records, yearMonth, label) {
+  const [year, month] = yearMonth.split("-").map(Number);
+  const monthList = [];
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date(year, month - 1 - i, 1);
+    const ym = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    monthList.push({ ym, label: `${date.getMonth() + 1}月` });
+  }
+
+  const values = monthList.map(({ ym }) => {
+    return { ym, label: ym.split("-")[1] + "月", value: getSpecialBalanceThroughMonth(records, ym) };
+  });
+
+  const allValues = values.map(v => v.value);
+  const minValue = Math.min(0, ...allValues);
+  const maxValue = Math.max(0, ...allValues);
+  const rawRange = maxValue - minValue;
+  const niceStep = rawRange <= 0 ? 10000 : [1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000].find(v => rawRange / v <= 4) || 10000;
+  const roundedMin = Math.floor(minValue / niceStep) * niceStep;
+  const roundedMax = Math.ceil(maxValue / niceStep) * niceStep;
+  const chartMin = roundedMin;
+  const chartMax = roundedMax;
+  const chartRange = Math.max(chartMax - chartMin, niceStep);
+
+  const width = 420;
+  const height = 260;
+  const left = 68;
+  const right = 18;
+  const top = 18;
+  const bottom = 40;
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
+  const yForValue = value => top + plotHeight - ((value - chartMin) / chartRange) * plotHeight;
+  const xForIndex = index => left + (index * plotWidth) / Math.max(values.length - 1, 1);
+  const points = values.map((item, index) => `${xForIndex(index)},${yForValue(item.value)}`).join(" ");
+
+  const yTicks = Array.from({ length: 5 }, (_, i) => {
+    const value = chartMin + (chartRange * i) / 4;
+    const y = yForValue(value);
+    return { value, y };
+  });
+
+  const xLabels = values.map((item, index) => `
+    <text x="${xForIndex(index)}" y="${height - 12}" text-anchor="middle" font-size="10" fill="#666">${item.label}</text>
+  `).join("");
+
+  const yLabels = yTicks.map(t => `
+    <text x="${left - 10}" y="${t.y + 4}" text-anchor="end" font-size="9" fill="#666">${Math.round(t.value).toLocaleString()}円</text>
+  `).join("");
+
+  const gridLines = yTicks.filter(t => t.value !== 0).map(t => `
+    <line class="summary-chart-gridline" x1="${left}" x2="${width - right}" y1="${t.y}" y2="${t.y}" stroke="#e5e7eb" stroke-width="1" />
+  `).join("");
+
+  const zeroY = yForValue(0);
+  const zeroLine = `<line x1="${left}" x2="${width - right}" y1="${zeroY}" y2="${zeroY}" stroke="#d0d5db" stroke-width="1" stroke-dasharray="4 4" />`;
+
+  const line = `
+    <polyline points="${points}" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></polyline>
+    ${values.map((item, index) => `<circle cx="${xForIndex(index)}" cy="${yForValue(item.value)}" r="3.5" fill="#f59e0b"><title>${ymLabel(item.ym)}末の残高: ${fmt(item.value)}</title></circle>`).join("")}
+  `;
+
+  return `
+    <div class="summary-chart-section">
+      <div class="summary-chart-caption">${label}</div>
+      <svg viewBox="0 0 ${width} ${height}" width="100%" height="260" aria-label="${label}の月別折れ線グラフ">
+        ${gridLines}
+        ${yLabels}
+        <line x1="${left}" x2="${left}" y1="${top}" y2="${top + plotHeight}" stroke="#dfe7ef" stroke-width="1" />
+        ${zeroLine}
+        ${line}
+        ${xLabels}
+      </svg>
+    </div>
+  `;
+}
+
+function renderSeriesChart(currentYM, monthRecords, allRecords) {
   const chartRoot = document.getElementById("summaryChart");
   if (!chartRoot) return;
 
-  const entries = Object.entries(bySubcat)
-    .filter(([, amount]) => Number(amount) > 0)
-    .sort((a, b) => b[1] - a[1]);
+  const normalRecords = monthRecords.filter(r => getRecordSeries(r) === "通常費");
+  const specialRecords = allRecords.filter(r => getRecordSeries(r) === "特別費");
 
-  if (entries.length === 0) {
-    chartRoot.innerHTML = '<div class="summary-chart-placeholder">支出データがありません</div>';
-    return;
-  }
+  const normalChart = createNormalExpensePieChart(normalRecords, "通常費");
+  const specialChart = createSpecialMonthlyLineChart(specialRecords, currentYM, "特別費");
 
-  const total = entries.reduce((sum, [, amount]) => sum + Number(amount), 0);
-  let acc = 0;
-
-  const radius = 62;
-  const center = 80;
-
-  const slices = entries.map(([label, amount], idx) => {
-    const value = Number(amount);
-    const ratio = value / total;
-    const start = acc;
-    const end = acc + ratio;
-    acc = end;
-
-    const startAngle = start * Math.PI * 2 - Math.PI / 2;
-    const endAngle = end * Math.PI * 2 - Math.PI / 2;
-    const x1 = center + radius * Math.cos(startAngle);
-    const y1 = center + radius * Math.sin(startAngle);
-    const x2 = center + radius * Math.cos(endAngle);
-    const y2 = center + radius * Math.sin(endAngle);
-    const largeArc = ratio > 0.5 ? 1 : 0;
-    const color = getChartColor(idx);
-
-    const path = ratio >= 0.9999
-      ? `<circle cx="${center}" cy="${center}" r="${radius}" fill="${color}"></circle>`
-      : `<path d="M ${center} ${center} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${radius} ${radius} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z" fill="${color}"></path>`;
-
-    return { label, value, ratio, color, path };
-  });
-
-  const svg = `
-    <svg viewBox="0 0 160 160" width="160" height="160" aria-label="小項目別の支出円グラフ">
-      ${slices.map(s => s.path).join("")}
-      <circle cx="${center}" cy="${center}" r="34" fill="#fff"></circle>
-      <text x="${center}" y="${center - 2}" text-anchor="middle" font-size="11" fill="#666">支出合計</text>
-      <text x="${center}" y="${center + 14}" text-anchor="middle" font-size="12" fill="#333" font-weight="bold">${fmt(total)}</text>
-    </svg>
-  `;
-
-  const legend = slices.map(s => `
-    <div class="summary-chart-legend-item">
-      <span class="summary-chart-color" style="background:${s.color}"></span>
-      <span>${s.label}</span>
-      <span class="summary-chart-percent">${Math.round(s.ratio * 100)}%</span>
-    </div>
-  `).join("");
-
-  chartRoot.innerHTML = `${svg}<div class="summary-chart-legend">${legend}</div>`;
+  chartRoot.innerHTML = `${normalChart}${specialChart}`;
 }
 
 function changeMonth(delta) {
@@ -323,6 +443,8 @@ function updateDetailLink() {
   detailLink.href = `kakeibo-detail.html?month=${encodeURIComponent(currentYM)}`;
 }
 
+let summaryRenderVersion = 0;
+
 async function renderKakeiboSummary() {
   const monthTitle = document.getElementById("monthTitle");
   const summary    = document.getElementById("summary");
@@ -330,67 +452,108 @@ async function renderKakeiboSummary() {
 
   if (!monthTitle || !summary || !breakdown) return;
 
-  monthTitle.textContent = ymLabel(currentYM);
-  localStorage.setItem(KAKEIBO_STORAGE_KEYS.SELECTED_MONTH, currentYM);
+  const renderVersion = ++summaryRenderVersion;
+  const selectedYM = currentYM;
+  monthTitle.textContent = ymLabel(selectedYM);
+  localStorage.setItem(KAKEIBO_STORAGE_KEYS.SELECTED_MONTH, selectedYM);
   updateDetailLink();
   summary.innerHTML = '<div id="loading">読み込み中…</div>';
   breakdown.innerHTML = "";
+  const chartRoot = document.getElementById("summaryChart");
+  if (chartRoot) chartRoot.innerHTML = '<div class="summary-chart-placeholder">読み込み中…</div>';
 
-  const records = await fetchRecords(currentYM);
-  const [, m]   = currentYM.split("-");
+  const records = await fetchRecords(selectedYM);
+  const allRecords = await fetchAllRecords({});
+  if (renderVersion !== summaryRenderVersion) return;
+  const [, m]   = selectedYM.split("-");
   const month   = parseInt(m, 10);
 
-  const income  = records.filter(r => r.type === "収入").reduce((s, r) => s + Number(r.amount), 0);
-  const expense = records.filter(r => r.type === "支出").reduce((s, r) => s + Number(r.amount), 0);
-  const balance = income - expense;
+  const seriesSummary = {
+    "通常費": { income: 0, expense: 0 },
+    "特別費": { income: 0, expense: 0 }
+  };
 
-  summary.innerHTML = `
-    <div class="summary-row"><span>収入</span><span class="summary-income">${fmt(income)}</span></div>
-    <div class="summary-row"><span>支出</span><span class="summary-expense">${fmt(expense)}</span></div>
-    <div class="summary-row"><span>収支</span><span class="summary-balance ${balance >= 0 ? 'plus' : 'minus'}">${balance >= 0 ? '+' : ''}${fmt(balance)}</span></div>
-  `;
-
-  const bySubcat = {};
-  records.filter(r => r.type === "支出").forEach(r => {
-    const k = r.subcategory || r.category;
-    bySubcat[k] = (bySubcat[k] || 0) + Number(r.amount);
+  records.forEach(r => {
+    const series = getRecordSeries(r);
+    if (!seriesSummary[series]) return;
+    if (r.type === "収入") {
+      seriesSummary[series].income += Number(r.amount) || 0;
+    }
+    if (r.type === "支出") {
+      seriesSummary[series].expense += Number(r.amount) || 0;
+    }
   });
 
-  renderSubcategoryChart(bySubcat);
+  const normal = seriesSummary["通常費"];
+  const special = seriesSummary["特別費"];
+  const normalBalance = normal.income - normal.expense;
+  const specialBalance = getSpecialBalanceThroughMonth(allRecords, selectedYM);
+  const monthNetBalance = normalBalance;
 
-  breakdown.innerHTML = `<h3 style="margin:12px 0 6px;font-size:15px;">小項目別の支出</h3>`;
+  summary.innerHTML = `
+    <div class="summary-series-grid">
+      <div class="summary-series-card">
+        <div class="summary-series-title">通常費</div>
+        <div class="summary-row"><span>収入</span><span class="summary-income">${fmt(normal.income)}</span></div>
+        <div class="summary-row"><span>支出</span><span class="summary-expense">${fmt(normal.expense)}</span></div>
+        <div class="summary-row summary-total-row"><span>合計収支</span><span class="summary-balance ${monthNetBalance >= 0 ? 'plus' : 'minus'}">${monthNetBalance >= 0 ? '+' : '-'}${fmt(Math.abs(monthNetBalance))}</span></div>
+      </div>
+      <div class="summary-series-card summary-series-card--special">
+        <div class="summary-series-title">特別費</div>
+        <div class="summary-row"><span>収入</span><span class="summary-income">${fmt(special.income)}</span></div>
+        <div class="summary-row"><span>支出</span><span class="summary-expense">${fmt(special.expense)}</span></div>
+        <div class="summary-row"><span>残高</span><span class="summary-balance ${specialBalance >= 0 ? 'plus' : 'minus'}">${specialBalance >= 0 ? '+' : '-'}${fmt(Math.abs(specialBalance))}</span></div>
+      </div>
+    </div>
+  `;
 
-  if (Object.keys(bySubcat).length === 0) {
-    breakdown.innerHTML += `<p style="color:#999;font-size:14px;"></p>`;
-  } else {
-    const sec = document.createElement("div");
-    sec.className = "sub-section";
-    Object.entries(bySubcat)
-      .sort((a, b) => b[1] - a[1])
-      .forEach(([label, amount]) => {
-        sec.innerHTML += `<div class="sub-item"><span>${label}</span><span class="sub-amount">${fmt(amount)}</span></div>`;
-      });
-    breakdown.appendChild(sec);
-  }
+  renderSeriesChart(selectedYM, records, allRecords);
+
+  breakdown.innerHTML = `<h3 style="margin:12px 0 6px;font-size:15px;">系列別の内訳</h3>`;
+
+  const sec = document.createElement("div");
+  sec.className = "sub-section";
+  [
+    ["通常費 収入", normal.income],
+    ["通常費 支出", normal.expense],
+    ["特別費 収入", special.income],
+    ["特別費 支出", special.expense],
+    ["特別費 残高", specialBalance]
+  ].forEach(([label, amount]) => {
+    const sign = amount >= 0 ? "+" : "-";
+    const amountClass = label.includes("支出") || (label.includes("残高") && amount < 0) ? "summary-expense" : "summary-income";
+    const displayValue = label.includes("残高")
+      ? `${sign}${fmt(Math.abs(amount))}`
+      : `${label.includes("支出") ? '−' : '+'}${fmt(Math.abs(amount))}`;
+    sec.innerHTML += `<div class="sub-item"><span>${label}</span><span class="sub-amount ${amountClass}">${displayValue}</span></div>`;
+  });
+  breakdown.appendChild(sec);
 
   let msg;
   const now = new Date();
   const thisYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-  if (income === 0 && expense === 0) {
+  if (records.length === 0) {
     msg = await getMessage("kakeibo", "no_data", null, { month });
-  } else if (currentYM === thisYM) {
+  } else if (selectedYM === thisYM) {
     msg = await getMessage("kakeibo", "balance_neutral", null, { month });
   } else {
-    if (balance >= 0) {
-      msg = await getMessage("kakeibo", "balance_plus", null, { month, balance: fmt(balance) });
+    if (monthNetBalance >= 0) {
+      msg = await getMessage("kakeibo", "balance_plus", null, { month, balance: fmt(monthNetBalance) });
     } else {
-      msg = await getMessage("kakeibo", "balance_minus", null, { month, balance: fmt(Math.abs(balance)) });
+      msg = await getMessage("kakeibo", "balance_minus", null, { month, balance: fmt(Math.abs(monthNetBalance)) });
     }
   }
 
+  if (renderVersion !== summaryRenderVersion) return;
+  if (!msg || !msg.text) {
+    setBubbleSpeech("家計簿を確認しよう。");
+    setCharacterExpression("normal");
+    return;
+  }
+
   setBubbleSpeech(msg.text);
-  setCharacterExpression(msg.expression);
+  setCharacterExpression(msg.expression || "normal");
 }
 
 function initKakeiboSummaryPage() {
@@ -413,8 +576,7 @@ function setDefaultMonth() {
   if (!monthInput) return;
 
   const qMonth = new URLSearchParams(window.location.search).get("month");
-  const saved = localStorage.getItem(KAKEIBO_STORAGE_KEYS.SELECTED_MONTH);
-  const initial = qMonth || saved || thisMonth();
+  const initial = qMonth || thisMonth();
   monthInput.value = initial;
   localStorage.setItem(KAKEIBO_STORAGE_KEYS.SELECTED_MONTH, initial);
 }
@@ -677,6 +839,7 @@ async function transferSelectedFixedCost() {
       await addRecord({
         type: "支出",
         date: `${month}-${String(day).padStart(2, "0")}`,
+        series: "通常費",
         category: "固定費",
         subcategory: t.subcategory,
         description: t.description,
@@ -728,6 +891,7 @@ async function saveEdit() {
     description: document.getElementById("m-description").value,
     amount:      parseInt(document.getElementById("m-amount").value, 10),
     person:      document.getElementById("m-person").value,
+    series:      getSeriesByCategory(document.getElementById("m-type").value, document.getElementById("m-category").value),
   };
   try {
     await updateRecord(editingFirestoreId, data);
@@ -903,7 +1067,16 @@ async function submitDetailInlineForm() {
   }
 
   try {
-    await addRecord({ type, date, category, subcategory, description, amount, person });
+    await addRecord({
+      type,
+      date,
+      series: getSeriesByCategory(type, category),
+      category,
+      subcategory,
+      description,
+      amount,
+      person,
+    });
     saveInputDate(date);
 
     descEl.value = "";
@@ -926,6 +1099,9 @@ async function submitDetailInlineForm() {
 }
 
 window.addEventListener("load", () => {
+  initCharacterImage();
+  currentYM = thisMonth();
+  localStorage.setItem(KAKEIBO_STORAGE_KEYS.SELECTED_MONTH, currentYM);
   initKakeiboInputPage();
   initKakeiboSummaryPage();
   initKakeiboDetailPage();

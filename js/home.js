@@ -19,10 +19,40 @@ function updateDateTime() {
 
 async function getWeather() {
   const url =
-    "https://api.open-meteo.com/v1/forecast?latitude=35.779&longitude=139.514&current_weather=true&timezone=Asia/Tokyo";
+    "https://api.open-meteo.com/v1/forecast?latitude=35.779&longitude=139.514&daily=weathercode,temperature_2m_max,temperature_2m_min&current_weather=true&timezone=Asia/Tokyo";
   const res  = await fetch(url);
+  if (!res.ok) throw new Error(`天気の取得に失敗しました: HTTP ${res.status}`);
   const data = await res.json();
-  return convertWeather(data.current_weather.weathercode);
+  const current = data.current_weather;
+  const daily = data.daily;
+  if (!current || !Number.isFinite(current.weathercode) || !Number.isFinite(current.temperature) ||
+      !daily || !Number.isFinite(daily.temperature_2m_max?.[0]) ||
+      !Number.isFinite(daily.temperature_2m_min?.[0])) {
+    throw new Error("天気データの形式が正しくありません");
+  }
+  return {
+    type: convertWeather(current.weathercode),
+    temperature: current.temperature,
+    max: daily.temperature_2m_max[0],
+    min: daily.temperature_2m_min[0]
+  };
+}
+
+async function loadHomeWeather() {
+  const container = document.getElementById("homeWeather");
+  try {
+    const weather = await getWeather();
+    container.innerHTML = `
+      <img src="img/weather/${weather.type}.png" alt="">
+      <p><strong>${WEATHER_LABELS[weather.type]}</strong>　現在 ${weather.temperature}℃<br>
+      最高 ${weather.max}℃ ／ 最低 ${weather.min}℃</p>
+    `;
+    return weather.type;
+  } catch (error) {
+    console.warn("清瀬市の天気を取得できませんでした:", error);
+    container.textContent = "天気を取得できませんでした。";
+    return null;
+  }
 }
 
 // ---- 時間帯判定 ----
@@ -100,7 +130,7 @@ function getStoredHomeReminder() {
   }
 }
 
-async function loadHomeMessage() {
+async function loadHomeMessage(weatherPromise) {
   const reminder = getStoredHomeReminder();
   if (reminder) {
     setBubbleSpeech(reminder.text);
@@ -112,13 +142,7 @@ async function loadHomeMessage() {
   setCharacterExpression("normal");
 
   const zone = getTimeZone();
-  let weather = null;
-
-  try {
-    weather = await getWeather();
-  } catch (e) {
-    console.warn("Weather fetch failed:", e);
-  }
+  const weather = await weatherPromise;
 
   const msg = await getMessage("home", zone, weather);
   setBubbleSpeech(msg.text || "おはようございます。今日もよろしくね。");
@@ -137,14 +161,11 @@ window.addEventListener("load", async () => {
     character.addEventListener("click", nextHomeTalk);
   }
 
-  try {
-    await loadLastUpdate();
-  } catch (e) {
-    console.error("Failed to load last update:", e);
-  }
+  loadLastUpdate();
+  const weatherPromise = loadHomeWeather();
 
   try {
-    await loadHomeMessage();
+    await loadHomeMessage(weatherPromise);
   } catch (e) {
     console.error("Failed to load home message:", e);
     setBubbleSpeech("メッセージを取得できませんでした。", { instant: true });
