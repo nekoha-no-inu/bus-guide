@@ -195,3 +195,78 @@ test("a route without departures shows an empty card when another route has a ca
     assert.match(card.innerHTML, /この方向・時刻の候補はありません/);
   }
 });
+
+test("home-to-station CSV requires leaving home strictly after the search time", () => {
+  const app = setup({ mockCandidates: false });
+  app.context.testRoutes = [{
+    mode: "自宅→清瀬駅", line: "清63", stop: "下清戸二丁目",
+    direction: "清瀬駅方向", getoff: "清瀬駅北口", walk_min: "9", ride_min: "8",
+  }];
+  app.context.testSchedules = ["08:08", "08:09", "08:10"].map(depart_time => ({
+    route: "清63", stop: "下清戸二丁目", direction: "清瀬駅方向", day_type: "平日", depart_time,
+  }));
+  vm.runInContext("routes = testRoutes; schedules = testSchedules", app.context);
+  const candidates = app.context.buildAllCandidates("自宅→清瀬駅", "平日", 480);
+  assert.deepEqual(Array.from(candidates, c => c.depart), ["08:10"]);
+});
+
+test("Transit API excludes uncatchable and past departures but keeps dated next-day departures", () => {
+  const app = setup();
+  app.context.testRoutes = [{
+    mode: "自宅→清瀬駅", line: "清63", stop: "下清戸二丁目",
+    getoff: "清瀬駅北口", walk_min: "9", ride_min: "8",
+  }];
+  vm.runInContext("routes = testRoutes", app.context);
+  const journey = departureTime => ({
+    legs: [{ mode: "BUS", routeName: "清63", departureTime, arrivalTime: departureTime.replace(/:\d\d$/, ":30") }],
+  });
+  const payload = { journeys: [
+    journey("07:55"), journey("08:08"), journey("08:09"), journey("08:10"),
+    journey("2026-11-15T08:10"), journey("2026-11-17T00:10"),
+  ] };
+  const candidates = app.context.toApiCandidates(payload, "自宅→清瀬駅", new Date(2026, 10, 16, 8), 480, true);
+  assert.deepEqual(Array.from(candidates, c => c.departMin), [490, 1450]);
+});
+
+test("home-to-station group cards choose earliest catchable departure, not earliest arrival", () => {
+  const app = setup();
+  const candidates = [
+    { line: "清63", departMin: 489, walk: 9, finishMin: 497 },
+    { line: "清63-1", departMin: 490, walk: 9, finishMin: 520 },
+    { line: "清63", departMin: 495, walk: 9, finishMin: 503 },
+  ];
+  const groups = app.context.buildGroupBestFromAll("自宅→清瀬駅", candidates, 480, true);
+  assert.equal(groups["清63"].departMin, 490);
+  const reverseGroups = app.context.buildGroupBestFromAll("清瀬駅→自宅", candidates, 480, false);
+  assert.equal(reverseGroups["清63"].departMin, 489);
+});
+
+test("current-time searches refresh the time and discard buses missed while the API was loading", async () => {
+  const app = setup({ useTransitApi: true });
+  let now = new Date(2026, 10, 16, 8, 0, 30);
+  app.context.Date = class extends Date {
+    constructor(...args) { super(...(args.length ? args : [now.getTime()])); }
+    static now() { return now.getTime(); }
+  };
+  vm.runInContext("_useCurrentDepartureTime = true", app.context);
+  let searchedAt;
+  app.context.buildAllCandidates = (mode, dayType, startMin) => {
+    searchedAt = startMin;
+    return [];
+  };
+  app.context.loadCandidatesFromTransitAPI = async () => {
+    now = new Date(2026, 10, 16, 8, 1, 10);
+    return [
+      { line: "清63", depart: "08:11", departMin: 491, walk: 9, finishMin: 510 },
+      { line: "清63", depart: "08:10", departMin: 490, walk: 9, finishMin: 509 },
+    ];
+  };
+  let shown;
+  app.context.renderAll = async candidate => { shown = candidate; };
+  app.elements.datetime.value = "2026-11-16T07:55";
+  await app.context.searchBus();
+  assert.equal(searchedAt, 480);
+  assert.equal(app.elements.datetime.value, "2026-11-16T08:00");
+  assert.equal(shown.depart, "08:11");
+  assert.equal(vm.runInContext("_allCandidates.length", app.context), 1);
+});

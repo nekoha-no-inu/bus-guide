@@ -38,6 +38,7 @@ let _initialStartMin = 0;
 let _lastDataSource  = "CSV";
 let _routeDecisionLogs = [];
 let _selectedDayType = null;
+let _useCurrentDepartureTime = false;
 
 function addRouteDecisionLog(message, details = null) {
   const time = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -507,8 +508,7 @@ function toApiCandidates(payload, mode, dt, startMin, isFromHome) {
           line
         );
 
-    let departAbsoluteMin = timestampDepartMin ?? departMin;
-    while (departAbsoluteMin < startMin) departAbsoluteMin += 24 * 60;
+    const departAbsoluteMin = timestampDepartMin ?? departMin;
     const arriveAbsoluteMin = departAbsoluteMin + rideMin;
     const finishMin = isFromHome ? arriveAbsoluteMin : arriveAbsoluteMin + walkMin;
 
@@ -527,7 +527,7 @@ function toApiCandidates(payload, mode, dt, startMin, isFromHome) {
     };
   }).filter(Boolean);
 
-  const eligible = built.filter(c => c.departMin >= startMin);
+  const eligible = built.filter(c => canCatchCandidate(c, startMin, isFromHome));
   addRouteDecisionLog("Transit API候補を解析", {
     journeyCount: journeys.length,
     parsedCount: built.length,
@@ -779,6 +779,11 @@ function getDepartureThreshold(route, startMin, isFromHome) {
   return isFromHome ? startMin + Number(route.walk_min) : startMin;
 }
 
+function canCatchCandidate(candidate, startMin, isFromHome) {
+  const departMin = candidate.departMin ?? toMin(candidate.depart);
+  return isFromHome ? departMin - candidate.walk > startMin : departMin >= startMin;
+}
+
 function buildCandidateFromRoute(route, schedule, isFromHome) {
   const departMin = toMin(schedule.depart_time);
   const rideMin   = Number(route.ride_min);
@@ -809,7 +814,7 @@ function buildAllCandidates(mode, dayType, startMin) {
       const matches = schedules.filter(s =>
           s.route === r.line && s.stop === r.stop &&
           s.direction === r.direction && s.day_type === dayType &&
-          toMin(s.depart_time) >= departAfter
+          (isFromHome ? toMin(s.depart_time) > departAfter : toMin(s.depart_time) >= departAfter)
         );
       addRouteDecisionLog(`${r.line}: ${matches.length}件の時刻表候補`, {
         stop: r.stop,
@@ -835,8 +840,7 @@ function buildGroupBestFromAll(mode, allCandidates, baseMin, isFromHome, fallbac
     candidates.forEach(c => {
       if (!isRouteAllowed(mode, c.line)) return;
       // 家→駅の場合はバス停までの徒歩時間を考慮し、実際に乗車可能な便だけを対象にする
-      const departThreshold = isFromHome ? baseMin + c.walk : baseMin;
-      if ((c.departMin ?? toMin(c.depart)) < departThreshold) return;
+      if (!canCatchCandidate(c, baseMin, isFromHome)) return;
 
       // 深夜便は「メイン便が23:00以降のときだけ」表示
       if (c.line === "深夜" && !showMidnight) return;
@@ -862,8 +866,14 @@ function buildGroupBestFromAll(mode, allCandidates, baseMin, isFromHome, fallbac
     if (candidates.length === 0) {
       best[group] = null;
     } else {
-      best[group] = candidates.reduce((fastest, candidate) =>
-        !fastest || candidate.finishMin < fastest.finishMin ? candidate : fastest, null);
+      best[group] = candidates.reduce((fastest, candidate) => {
+        if (!fastest) return candidate;
+        if (!isFromHome) return candidate.finishMin < fastest.finishMin ? candidate : fastest;
+        const depart = candidate.departMin ?? toMin(candidate.depart);
+        const fastestDepart = fastest.departMin ?? toMin(fastest.depart);
+        return depart < fastestDepart || (depart === fastestDepart && candidate.finishMin < fastest.finishMin)
+          ? candidate : fastest;
+      }, null);
     }
   });
 
@@ -966,6 +976,15 @@ async function searchBus() {
   _routeDecisionLogs = [];
   addRouteDecisionLog("検索開始");
 
+  if (_useCurrentDepartureTime) {
+    const previousDate = document.getElementById("datetime").value;
+    const now = fmtDTL(new Date());
+    setDepartureDateTime(now);
+    if (previousDate.slice(0, 10) !== now.slice(0, 10) &&
+        _selectedDayType === getDayType(new Date(previousDate))) {
+      refreshDayTypeFromDate();
+    }
+  }
   if (!syncDepartureDateTimeFromManual()) {
     addRouteDecisionLog("検索中止: 出発日時が未入力");
     document.getElementById("datetimeManual").reportValidity();
@@ -989,8 +1008,7 @@ async function searchBus() {
   _lastIsFromHome = isFromHome;
   _initialStartMin = startMin;
 
-  const csvCandidates = buildAllCandidates(mode, dayType, startMin);
-  _csvGroupCandidates = csvCandidates;
+  let csvCandidates = buildAllCandidates(mode, dayType, startMin);
   const isDayTypeOverride = dayType !== calendarDayType;
   let apiCandidates = [];
   if (useTransitApi && isDayTypeOverride) {
@@ -1004,6 +1022,15 @@ async function searchBus() {
   } else {
     addRouteDecisionLog("Transit APIは無効。CSV時刻表を使用");
   }
+
+  let effectiveStartMin = startMin;
+  if (_useCurrentDepartureTime) {
+    effectiveStartMin = Math.max(startMin, parseApiDateTimeOffsetMin(new Date().toISOString(), dt));
+    csvCandidates = csvCandidates.filter(c => canCatchCandidate(c, effectiveStartMin, isFromHome));
+    apiCandidates = apiCandidates.filter(c => canCatchCandidate(c, effectiveStartMin, isFromHome));
+  }
+  _initialStartMin = effectiveStartMin;
+  _csvGroupCandidates = csvCandidates;
 
   if (apiCandidates.length > 0) {
     _allCandidates = apiCandidates;
@@ -1034,7 +1061,7 @@ async function searchBus() {
   if (_allCandidates.length === 0) {
     addRouteDecisionLog("該当する便なし", { source: _lastDataSource, mode, dayType, startMin });
     document.getElementById("routeCard").style.display = "none";
-    renderGroupCards(startMin, isFromHome);
+    renderGroupCards(effectiveStartMin, isFromHome);
     document.getElementById("prevBtn").disabled = true;
     document.getElementById("nextBtn").disabled = true;
     const msg = await getTransferMsg("noBus");
@@ -1073,14 +1100,18 @@ async function initializeTransferPage() {
   const datetimeManual = document.getElementById("datetimeManual");
   const initialValue = fmtDTL(new Date());
   setDepartureDateTime(initialValue);
+  _useCurrentDepartureTime = true;
   datetimeManual.addEventListener("input", () => {
+    _useCurrentDepartureTime = false;
     if (syncDepartureDateTimeFromManual()) refreshDayTypeFromDate();
   });
   datetimeManual.addEventListener("change", () => {
+    _useCurrentDepartureTime = false;
     if (!syncDepartureDateTimeFromManual()) datetimeManual.reportValidity();
     else refreshDayTypeFromDate();
   });
   datetimePicker.addEventListener("change", () => {
+    _useCurrentDepartureTime = false;
     setDepartureDateTime(datetimePicker.value);
     refreshDayTypeFromDate();
   });
@@ -1096,7 +1127,9 @@ async function initializeTransferPage() {
     button.addEventListener("click", () => setSelectedDayType(button.dataset.dayType));
   });
   document.getElementById("nowButton").addEventListener("click", () => {
+    _useCurrentDepartureTime = true;
     setDepartureDateTime(fmtDTL(new Date()));
+    refreshDayTypeFromDate();
   });
   document.getElementById("datetimePickerBtn").addEventListener("click", () => {
     if (typeof datetimePicker.showPicker === "function") datetimePicker.showPicker();
