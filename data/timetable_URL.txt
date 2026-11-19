@@ -1,0 +1,11 @@
+https://transfer-cloud.navitime.biz/seibubus/courses/timetables?busstop=00111068&course-sequence=0001900251-1 ​‌
+https://transfer-cloud.navitime.biz/seibubus/courses/timetables?busstop=00111068&course-sequence=0001900124-1
+https://transfer-cloud.navitime.biz/seibubus/courses/timetables?busstop=00111068&course-sequence=0001901255-1 ​‌
+https://transfer-cloud.navitime.biz/seibubus/courses/timetables?busstop=00111068&course-sequence=0001900130-1 
+https://transfer-cloud.navitime.biz/seibubus/courses/timetables?busstop=00111101&course-sequence=0001901246-1
+https://transfer-cloud.navitime.biz/seibubus/courses/timetables?busstop=00111101&course-sequence=0001900124-9
+https://transfer-cloud.navitime.biz/seibubus/courses/timetables?busstop=00111084&course-sequence=0001900147-12
+https://transfer-cloud.navitime.biz/seibubus/courses/timetables?busstop=00111094&course-sequence=0001901256-4
+https://transfer-cloud.navitime.biz/seibubus/courses/timetables?busstop=00111094&course-sequence=0001900043-4
+https://transfer-cloud.navitime.biz/seibubus/courses/timetables?busstop=00111075&course-sequence=0001900666-8
+https://transfer-cloud.navitime.biz/seibubus/courses/timetables?busstop=00111140&course-sequence=0001900180-9

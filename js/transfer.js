@@ -16,6 +16,12 @@ const API_MODE_QUERY = {
   "新座駅→自宅": { station: "新座駅南口" },
 };
 const SEIBU_ROUTE_GROUPS = ["清61", "清62", "清63", "清64"];
+const EXCLUDED_ROUTE_GROUPS_BY_MODE = {
+  "自宅→清瀬駅": ["清61"],
+  "清瀬駅→自宅": ["清61"],
+  "自宅→新座駅": ["清63", "清64"],
+  "新座駅→自宅": ["清63", "清64"],
+};
 const _endpointCache = new Map();
 
 let holidayList = [];
@@ -209,6 +215,11 @@ function normalizeRouteLine(line) {
 
 function grp(line) { return normalizeRouteLine(line).replace(/-\d+$/, ""); }
 
+function isRouteAllowed(mode, line) {
+  const group = normalizeRouteLine(line).match(/清(?:61|63|64)(?!\d)/)?.[0];
+  return !group || !(EXCLUDED_ROUTE_GROUPS_BY_MODE[mode] || []).includes(group);
+}
+
 function safeNum(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
@@ -348,7 +359,7 @@ function uniqueBy(items, keyFn) {
 }
 
 function getModeStopNames(mode, isFromHome) {
-  const modeRoutes = routes.filter(r => r.mode === mode);
+  const modeRoutes = routes.filter(r => r.mode === mode && isRouteAllowed(mode, r.line));
   if (modeRoutes.length === 0) return [];
 
   if (isFromHome) {
@@ -792,7 +803,7 @@ function buildCandidateFromRoute(route, schedule, isFromHome) {
 
 function buildAllCandidates(mode, dayType, startMin) {
   const isFromHome = mode.startsWith("自宅→");
-  const modeRoutes = routes.filter(r => r.mode === mode);
+  const modeRoutes = routes.filter(r => r.mode === mode && isRouteAllowed(mode, r.line));
   const candidates = modeRoutes.flatMap(r => {
       const departAfter = getDepartureThreshold(r, startMin, isFromHome);
       const matches = schedules.filter(s =>
@@ -815,13 +826,14 @@ function buildAllCandidates(mode, dayType, startMin) {
 }
 
 // ---- 系統グループ別の最速1件 ----
-function buildGroupBestFromAll(allCandidates, baseMin, isFromHome, fallbackCandidates = []) {
+function buildGroupBestFromAll(mode, allCandidates, baseMin, isFromHome, fallbackCandidates = []) {
   // メイン便が23:00以降かどうか
   const showMidnight = baseMin >= 23 * 60;
 
   const collectByGroup = candidates => {
     const grouped = new Map();
     candidates.forEach(c => {
+      if (!isRouteAllowed(mode, c.line)) return;
       // 家→駅の場合はバス停までの徒歩時間を考慮し、実際に乗車可能な便だけを対象にする
       const departThreshold = isFromHome ? baseMin + c.walk : baseMin;
       if ((c.departMin ?? toMin(c.depart)) < departThreshold) return;
@@ -839,7 +851,7 @@ function buildGroupBestFromAll(allCandidates, baseMin, isFromHome, fallbackCandi
   const primaryByGroup = collectByGroup(allCandidates);
   const fallbackByGroup = collectByGroup(fallbackCandidates);
   const groupNames = new Set([
-    ...SEIBU_ROUTE_GROUPS,
+    ...SEIBU_ROUTE_GROUPS.filter(group => isRouteAllowed(mode, group)),
     ...primaryByGroup.keys(),
     ...fallbackByGroup.keys(),
   ]);
@@ -900,6 +912,22 @@ function groupCardBody(c, isFromHome) {
   }
 }
 
+function renderGroupCards(baseMin, isFromHome) {
+  const groupBest = buildGroupBestFromAll(_lastMode, _allCandidates, baseMin, isFromHome, _csvGroupCandidates);
+  const groupsEl = document.getElementById("groupCards");
+  groupsEl.innerHTML = "";
+  Object.keys(groupBest).sort().forEach(g => {
+    const c    = groupBest[g];
+    const card = document.createElement("div");
+    card.className = "group-card";
+    card.innerHTML = `
+      <div class="group-header"><span class="group-title">${g} 系統</span></div>
+      <div class="group-body">${c ? groupCardBody(c, isFromHome) : '<div class="group-empty">この方向・時刻の候補はありません</div>'}</div>
+    `;
+    groupsEl.appendChild(card);
+  });
+}
+
 // ---- 全体描画 ----
 
 async function renderAll(focusCandidate, isFromHome, label) {
@@ -925,31 +953,11 @@ async function renderAll(focusCandidate, isFromHome, label) {
   document.getElementById("prevBtn").disabled = (_allIndex <= 0);
   document.getElementById("nextBtn").disabled = (_allIndex >= _allCandidates.length - 1);
 
-  // 系統グループカード：フォーカス便の出発時刻を基準に最速を再計算
-  const focusMin  = focusCandidate.departMin ?? toMin(focusCandidate.depart);
-  // const groupBest = buildGroupBest(_lastMode, _lastDayType, focusMin);
-  // 初回表示は startMin を使う
-  let baseMin;
-  if (label === "first") {
-    baseMin = _initialStartMin;
-  } else {
-    baseMin = focusCandidate.departMin ?? toMin(focusCandidate.depart);
-  }
-
-  const groupBest = buildGroupBestFromAll(_allCandidates, baseMin, isFromHome, _csvGroupCandidates);
-
-  const groupsEl = document.getElementById("groupCards");
-  groupsEl.innerHTML = "";
-  Object.keys(groupBest).sort().forEach(g => {
-    const c    = groupBest[g];
-    const card = document.createElement("div");
-    card.className = "group-card";
-    card.innerHTML = `
-      <div class="group-header"><span class="group-title">${g} 系統</span></div>
-      <div class="group-body">${c ? groupCardBody(c, isFromHome) : '<div class="group-empty">この方向・時刻の候補はありません</div>'}</div>
-    `;
-    groupsEl.appendChild(card);
-  });
+  // 初回表示は検索時刻、それ以降はフォーカス便の出発時刻を基準にする
+  const baseMin = label === "first"
+    ? _initialStartMin
+    : (focusCandidate.departMin ?? toMin(focusCandidate.depart));
+  renderGroupCards(baseMin, isFromHome);
 }
 
 // ---- 検索メイン ----
@@ -972,8 +980,9 @@ async function searchBus() {
   const calendarDayType = getDayType(dt);
   const dayType    = _selectedDayType || calendarDayType;
   const isFromHome = mode.startsWith("自宅→");
+  const useTransitApi = document.getElementById("useTransitApi")?.checked === true;
 
-  addRouteDecisionLog("検索条件", { datetime, calendarDayType, selectedDayType: dayType, mode, dayType, startMin, isFromHome });
+  addRouteDecisionLog("検索条件", { datetime, calendarDayType, selectedDayType: dayType, mode, dayType, startMin, isFromHome, useTransitApi });
 
   _lastMode       = mode;
   _lastDayType    = dayType;
@@ -984,13 +993,16 @@ async function searchBus() {
   _csvGroupCandidates = csvCandidates;
   const isDayTypeOverride = dayType !== calendarDayType;
   let apiCandidates = [];
-  if (isDayTypeOverride) {
+  if (useTransitApi && isDayTypeOverride) {
     addRouteDecisionLog("曜日ダイヤを手動指定したためTransit APIを使わず、選択したCSVダイヤを使用");
-  } else {
+  } else if (useTransitApi) {
     const loadingMessage = await getTransferMsg("loading");
     setBubbleSpeech(loadingMessage.text);
     setCharacterExpression(loadingMessage.expression);
-    apiCandidates = await loadCandidatesFromTransitAPI(mode, dt, startMin, isFromHome);
+    apiCandidates = (await loadCandidatesFromTransitAPI(mode, dt, startMin, isFromHome))
+      .filter(c => isRouteAllowed(mode, c.line));
+  } else {
+    addRouteDecisionLog("Transit APIは無効。CSV時刻表を使用");
   }
 
   if (apiCandidates.length > 0) {
@@ -998,7 +1010,10 @@ async function searchBus() {
     _lastDataSource = "Transit API";
   } else {
     _allCandidates = csvCandidates;
-    _lastDataSource = "CSV（フォールバック）";
+    _lastDataSource = "CSV";
+    if (useTransitApi && !isDayTypeOverride) {
+      addRouteDecisionLog("Transit API候補なし、CSV時刻表を使用");
+    }
   }
   addRouteDecisionLog("候補データの選択", {
     source: _lastDataSource,
@@ -1019,7 +1034,7 @@ async function searchBus() {
   if (_allCandidates.length === 0) {
     addRouteDecisionLog("該当する便なし", { source: _lastDataSource, mode, dayType, startMin });
     document.getElementById("routeCard").style.display = "none";
-    document.getElementById("groupCards").innerHTML    = "";
+    renderGroupCards(startMin, isFromHome);
     document.getElementById("prevBtn").disabled = true;
     document.getElementById("nextBtn").disabled = true;
     const msg = await getTransferMsg("noBus");
